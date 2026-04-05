@@ -42,10 +42,10 @@ git clone https://github.com/chinmayPatil10/recess.git
 cd recess
 
 # Start a local server (choose one):
-python -m http.server 8080        # Python
-python3 -m http.server 8080       # Python 3
 npx serve .                       # Node.js
-php -S localhost:8080             # PHP
+python -m http.server 8080        # Python (if available)
+python3 -m http.server 8080       # Python 3 (if available)
+php -S localhost:8080             # PHP (if available)
 
 # Open http://localhost:8080
 ```
@@ -146,11 +146,23 @@ We'd love your help building new games!
 
 ## 💰 Cost
 
-### Per-Game Estimates (OpenAI)
-- Model Roast (3 rounds): ~$0.004
-- Guess the Model (5 answers): ~$0.008  
-- Haiku Battle (4 models): ~$0.003
-- Full session, all games: ~$0.03
+### Per-Game Cost Estimates (OpenAI GPT-4o Pricing)
+
+| Game | Models Used | Est. Cost per Play | Notes |
+|------|-------------|------------------|-------|
+| **Model Roast** 🔥 | 2 models × 3 rounds | ~$0.004 | 3 debate rounds between 2 models |
+| **Guess the Model** 🕵️ | 3-5 models × 1 response | ~$0.006 | 1 response per model, then voting |
+| **Roast Me** 😈 | 3 models × 1 response | ~$0.003 | 1 roast per model |
+| **Haiku Battle** 🎋 | 4 models × 1 response | ~$0.003 | 1 haiku per model |
+| **The Therapists** 🛌️ | 5 personas × 1 response | ~$0.004 | 1 therapy response per persona |
+| **The Advisors** 💼 | 4 personas × 1 response | ~$0.003 | 1 advice response per persona |
+| **The Writers Room** ✍️ | 4 personas × 1 response | ~$0.003 | 1 writing response per persona |
+| **Explain It As** 🎭 | 3 personas × 1 response | ~$0.002 | 1 explanation per persona |
+| **Hot Take** 💣 | 3 personas × 1 response | ~$0.002 | 1 hot take per persona |
+
+### Session Costs
+- **Full session (all 9 games)**: ~$0.03
+- **Average per game**: ~$0.003
 
 **Most games cost less than a penny to play.**
 
