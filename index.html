@@ -1356,17 +1356,7 @@ function startFreePlayBtn() {
 
 // Init on load
 window.addEventListener('load', () => {
-  renderFreeTab();
-
-  if (KeyManager.hasAnyKey()) {
-    switchKeyTab('mykey'); // shows vault
-    const banner = document.getElementById('try-free-banner');
-    if (banner) banner.style.display = 'none';
-  } else if (KeyManager.isFreeUsed()) {
-    switchKeyTab('free');
-  } else {
-    renderFreeTab();
-  }
+  renderKeyVault();
   renderGames();
 });
 
