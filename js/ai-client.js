@@ -16,8 +16,8 @@ const MODEL_FAMILIES = {
     { modelId: 'claude-haiku-4-5-20251001', display: 'Claude Haiku' },
   ],
   gemini: [
-    { modelId: 'gemini-1.5-pro',   display: 'Gemini Pro' },
-    { modelId: 'gemini-1.5-flash', display: 'Gemini Flash' },
+    { modelId: 'gemini-2.5-pro',   display: 'Gemini Pro' },
+    { modelId: 'gemini-2.5-flash', display: 'Gemini Flash' },
     { modelId: 'gemini-1.0-pro',   display: 'Gemini 1.0' },
   ],
   deepseek: [
@@ -167,32 +167,70 @@ async function _callGemini(key, modelId, messages, onChunk, onDone, onError) {
   const body = { contents, generationConfig: { maxOutputTokens: 512 } };
   if (systemInstruction) body.systemInstruction = systemInstruction;
 
-  let res;
-  try {
-    res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-    );
-  } catch { onError('Network error — check your internet connection'); return; }
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 401 || res.status === 400) onError('Invalid API key — check your key matches the provider');
-    else if (res.status === 429) onError('Rate limited — wait a moment and try again');
-    else if (res.status === 403) onError('Access denied — check your account has API access');
-    else onError(err.error?.message || `Gemini error ${res.status}`);
-    return;
+  // Retry mechanism for rate limits
+  const maxRetries = 3;
+  const baseDelay = 1000; // 1 second base delay
+  
+  async function makeRequest(retryCount = 0) {
+    let res;
+    try {
+      // First try to list models to see what's available
+      const listRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`,
+        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+      );
+      
+      if (listRes.ok) {
+        const models = await listRes.json();
+        console.log('Available Gemini models:', models.models?.map(m => m.name) || 'none');
+      }
+      
+      // Then proceed with generateContent
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${key}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
+    } catch (networkError) {
+      if (retryCount < maxRetries) {
+        const delay = baseDelay * Math.pow(2, retryCount);
+        console.log(`Gemini request failed, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return makeRequest(retryCount + 1);
+      } else {
+        onError('Network error — check your internet connection');
+        return;
+      }
+    }
+    
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (res.status === 401 || res.status === 400) onError('Invalid API key — check your key matches the provider');
+      else if (res.status === 429) {
+        const retryAfter = err.error?.details?.retryAfter || 60;
+        if (retryCount < maxRetries - 1) {
+          onError(`Rate limited — retrying in ${retryAfter}s... (attempt ${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+          return makeRequest(retryCount + 1);
+        } else {
+          onError(`Rate limited — wait ${retryAfter}s then try again. Gemini free tier: 15 requests/minute.`);
+        }
+      }
+      else if (res.status === 403) onError('Access denied — check your account has API access');
+      else onError(err.error?.message || `Gemini error ${res.status}`);
+      return;
+    }
+    
+    const json = await res.json();
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!text) { onError('Gemini returned an empty response'); return; }
+    // Simulate streaming
+    const words = text.split(' ');
+    for (let i = 0; i < words.length; i++) {
+      onChunk((i === 0 ? '' : ' ') + words[i]);
+      await new Promise(r => setTimeout(r, 14));
+    }
+    onDone(text);
   }
-  const json = await res.json();
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  if (!text) { onError('Gemini returned an empty response'); return; }
-  // Simulate streaming
-  const words = text.split(' ');
-  for (let i = 0; i < words.length; i++) {
-    onChunk((i === 0 ? '' : ' ') + words[i]);
-    await new Promise(r => setTimeout(r, 14));
-  }
-  onDone(text);
 }
 
 async function _callDeepSeek(key, modelId, messages, onChunk, onDone, onError) {
