@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- CHANGE THIS: Update title with your game name and emoji -->
+  <title>Your Game Name 🎮 AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    /* CHANGE THIS: Update grid class name and styling for your game */
+    .your-game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1px;
+      background: var(--dim);
+    }
+    /* CHANGE THIS: Update panel class name */
+    .your-game-panel {
+      background: var(--bg2);
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    .your-game-panel:hover { background: var(--bg3); }
+    .your-game-panel.vote-mode { cursor: pointer; }
+    .your-game-panel.winner { border: 2px solid var(--accent); }
+    
+    /* Panel headers */
+    .panel-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-title {
+      font-family: var(--display);
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+    .panel-model {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation injection -->
+<div id="nav-placeholder"></div>
+
+<!-- No-key guard overlay -->
+<div class="no-key-overlay" id="no-key-overlay">
+  <div style="text-align:center;max-width:400px">
+    <div style="font-size:2rem;margin-bottom:1rem">🔒</div>
+    <div style="font-family:var(--display);font-size:1.5rem;margin-bottom:0.75rem">
+      <!-- CHANGE THIS: Update game name -->
+      Your Game Name
+    </div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:1.5rem">
+      <!-- CHANGE THIS: Brief description of what the game does -->
+      Brief description of your game and what it does.
+    </div>
+    <a href="../index.html" class="arcade-btn-primary">
+      ← Back to lobby
+    </a>
+  </div>
+</div>
+
+<!-- Game container -->
+<div class="game-container">
+  
+  <!-- Game header -->
+  <div class="game-header">
+    <div class="game-breadcrumb">
+      <a href="../index.html">← AILeela</a>
+    </div>
+    <div class="game-title">
+      <!-- CHANGE THIS: Game title and emoji -->
+      <h1>Your Game Name 🎮</h1>
+      <!-- CHANGE THIS: Game description -->
+      <p>Brief description of what happens in this game.</p>
+    </div>
+  </div>
+
+  <!-- Setup section -->
+  <div class="game-setup" id="setup-section">
+    <div class="setup-inner">
+      
+      <!-- Topic input -->
+      <div class="setup-group">
+        <label class="setup-label">
+          <!-- CHANGE THIS: Update label for your input -->
+          Enter your topic or prompt
+        </label>
+        <div class="setup-input-row">
+          <input 
+            type="text" 
+            id="topic-input" 
+            class="arcade-input"
+            <!-- CHANGE THIS: Update placeholder -->
+            placeholder="e.g., The meaning of life"
+            maxlength="100"
+          >
+          <!-- CHANGE THIS: Add preset topics for your game -->
+          <div class="preset-topics">
+            <button class="preset-btn" onclick="setTopic('Artificial intelligence')">AI</button>
+            <button class="preset-btn" onclick="setTopic('Climate change')">Climate</button>
+            <button class="preset-btn" onclick="setTopic('Social media')">Social Media</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Model selector -->
+      <div class="setup-group">
+        <label class="setup-label">Models</label>
+        <div id="model-selector-container"></div>
+      </div>
+
+      <!-- Start button -->
+      <button class="arcade-btn-primary" id="start-btn" onclick="startGame()">
+        ▶ Start Game
+      </button>
+    </div>
+  </div>
+
+  <!-- Game area -->
+  <div class="game-area" id="game-area" style="display:none">
+    
+    <!-- Game info bar -->
+    <div class="game-info">
+      <div class="game-topic">
+        Topic: <strong id="current-topic"></strong>
+      </div>
+      <div class="game-note" id="game-note"></div>
+    </div>
+
+    <!-- Results grid -->
+    <!-- CHANGE THIS: Update grid class name -->
+    <div class="your-game-grid" id="results-grid">
+      <!-- Panels will be populated by JavaScript -->
+    </div>
+
+    <!-- Vote section -->
+    <div class="vote-section" id="vote-section" style="display:none">
+      <div class="vote-prompt">
+        <!-- CHANGE THIS: Update voting prompt -->
+        <h3>Which response do you like best?</h3>
+        <p>Click on a panel to vote for the winner</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/nav.js"></script>
+<script src="../js/share-card.js"></script>
+<script>
+
+// CHANGE THIS: Define your personas or model configurations
+const GAME_PERSONAS = [
+  {
+    name: 'Persona 1',
+    emoji: '🎭',
+    color: '#40e890',
+    systemPrompt: 'You are a helpful assistant...' + NO_META,
+  },
+  {
+    name: 'Persona 2', 
+    emoji: '🎪',
+    color: '#e8308a',
+    systemPrompt: 'You are a creative writer...' + NO_META,
+  },
+  {
+    name: 'Persona 3',
+    emoji: '🎨',
+    color: '#30c8e8', 
+    systemPrompt: 'You are a philosopher...' + NO_META,
+  }
+  // Add more personas as needed (max 6 recommended)
+];
+
+// Game state
+let gameState = {
+  topic: '',
+  selector: null,
+  panelData: []
+};
+
+// Initialize
+window.addEventListener('load', () => {
+  Nav.inject();
+  
+  // Check if user has access
+  const guard = KeyManager.guardPage();
+  if (guard === 'wall') {
+    document.getElementById('no-key-overlay').style.display = 'grid';
+    return;
+  }
+
+  // Initialize model selector
+  gameState.selector = buildModelSelector(
+    document.getElementById('model-selector-container'),
+    {
+      min: 2,
+      max: Math.min(6, GAME_PERSONAS.length),
+      personas: GAME_PERSONAS,
+      onChange: validateSetup
+    }
+  );
+
+  validateSetup();
+});
+
+// CHANGE THIS: Update preset topic function if needed
+function setTopic(topic) {
+  document.getElementById('topic-input').value = topic;
+  validateSetup();
+}
+
+function validateSetup() {
+  const topic = document.getElementById('topic-input').value.trim();
+  const isValid = topic.length > 0 && gameState.selector?.isValid();
+  document.getElementById('start-btn').disabled = !isValid;
+}
+
+function startGame() {
+  const topic = document.getElementById('topic-input').value.trim();
+  if (!topic) return;
+
+  gameState.topic = topic;
+  
+  // Hide setup, show game area
+  document.getElementById('setup-section').style.display = 'none';
+  document.getElementById('game-area').style.display = 'block';
+  document.getElementById('current-topic').textContent = topic;
+  
+  // Update game note
+  const note = gameState.selector.getNote();
+  document.getElementById('game-note').textContent = note;
+
+  // Start the game
+  runGame();
+}
+
+async function runGame() {
+  const models = gameState.selector.getModels();
+  const personas = gameState.selector.getPersonas();
+  const mode = gameState.selector.getMode();
+  
+  // Clear previous results
+  gameState.panelData = [];
+  const grid = document.getElementById('results-grid');
+  grid.innerHTML = '';
+
+  // CHANGE THIS: Update user message construction for your game
+  const userMessage = `Topic: ${gameState.topic}`;
+
+  if (mode === 'personas') {
+    // Persona mode - same model, different system prompts
+    const provider = KeyManager.getPrimaryProvider();
+    const key = KeyManager.get(provider);
+    
+    personas.forEach((persona, i) => {
+      const panelEl = createPanel(persona.name, persona.emoji, persona.color);
+      const bodyEl = panelEl.querySelector('.panel-content');
+      
+      gameState.panelData.push({
+        persona,
+        modelSpec: { provider, key, display: persona.name },
+        el: panelEl,
+        bodyEl
+      });
+      
+      grid.appendChild(panelEl);
+      
+      // Start streaming
+      const messages = [
+        { role: 'system', content: persona.systemPrompt },
+        { role: 'user', content: userMessage }
+      ];
+      
+      streamToPanel({ provider, key }, messages, bodyEl, panelEl);
+    });
+  } else {
+    // Model mode - different models
+    models.forEach((model, i) => {
+      const panelEl = createPanel(model.display, '🤖', getModelColor(model.provider));
+      const bodyEl = panelEl.querySelector('.panel-content');
+      
+      gameState.panelData.push({
+        modelSpec: model,
+        el: panelEl,
+        bodyEl
+      });
+      
+      grid.appendChild(panelEl);
+      
+      // CHANGE THIS: Update system prompt for your game
+      const messages = [
+        { role: 'system', content: 'You are a helpful assistant.' + NO_META },
+        { role: 'user', content: userMessage }
+      ];
+      
+      streamToPanel(model, messages, bodyEl, panelEl);
+    });
+  }
+
+  // Wait a bit then show voting
+  setTimeout(() => {
+    showVoting();
+  }, 3000);
+}
+
+function createPanel(title, emoji, color) {
+  const panel = document.createElement('div');
+  panel.className = 'your-game-panel'; // CHANGE THIS: Update class name
+  
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">
+        <span style="font-size:1.2rem;margin-right:0.5rem">${emoji}</span>
+        ${title}
+      </div>
+      <div class="panel-model" style="color:${color}">
+        ${title}
+      </div>
+    </div>
+    <div class="panel-content">
+      <div class="panel-thinking">
+        <span style="color:${color}">●</span>
+        <span style="color:${color}">●</span>
+        <span style="color:${color}">●</span>
+      </div>
+    </div>
+  `;
+  
+  return panel;
+}
+
+function showVoting() {
+  // Enable voting on panels
+  gameState.panelData.forEach(data => {
+    data.el.classList.add('vote-mode');
+    data.el.onclick = () => castVote(data);
+  });
+  
+  // Show vote section
+  document.getElementById('vote-section').style.display = 'block';
+  document.getElementById('vote-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function castVote(winnerData) {
+  // Remove vote mode from all panels
+  gameState.panelData.forEach(data => {
+    data.el.classList.remove('vote-mode');
+    data.el.onclick = null;
+  });
+  
+  // Mark winner
+  winnerData.el.classList.add('winner');
+  
+  // Hide vote section
+  document.getElementById('vote-section').style.display = 'none';
+  
+  // CHANGE THIS: Update share card content for your game
+  const responseText = winnerData.bodyEl.textContent || '';
+  const excerpt = responseText.slice(0, 120) + (responseText.length > 120 ? '...' : '');
+  
+  ShareCard.show({
+    game: 'Your Game Name', // CHANGE THIS
+    headline: `${winnerData.modelSpec?.display || winnerData.persona?.name} wins! 🏆`,
+    body: `Topic: "${gameState.topic}" - ${excerpt}`,
+    tweetText: `${winnerData.modelSpec?.display || winnerData.persona?.name} just won at Your Game Name on AILeela! Topic: "${gameState.topic}" - "${excerpt}"` // CHANGE THIS
+  });
+}
+
+// Topic input validation
+document.getElementById('topic-input').addEventListener('input', validateSetup);
+
+</script>
+</body>
+</html>

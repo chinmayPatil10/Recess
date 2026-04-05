@@ -492,6 +492,68 @@
     .footer-links a { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; transition: color 0.15s; }
     .footer-links a:hover { color: var(--text); }
     .footer-mit { font-size: 10px; color: var(--dim); letter-spacing: 0.1em; }
+
+    /* ── CONTRIBUTE SECTION ──────────────────────────────────── */
+    .contribute-section {
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      border-top: 1px solid var(--dim);
+    }
+    .contribute-card {
+      background: var(--bg2);
+      border: 1px solid var(--dim);
+      border-radius: 12px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .contribute-card:hover {
+      background: var(--bg3);
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+    .contribute-step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      color: var(--bg);
+      border-radius: 50%;
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .contribute-card h3 {
+      font-family: var(--display);
+      font-size: 1.3rem;
+      margin: 0 0 0.75rem;
+      color: var(--text);
+    }
+    .contribute-card p {
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0 0 1rem;
+    }
+    .contribute-card code {
+      display: block;
+      background: var(--bg);
+      border: 1px solid var(--dim);
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--accent);
+      margin-top: 1rem;
+    }
+    .contribute-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body>
@@ -809,6 +871,56 @@
   </div>
 </section>
 
+<!-- ── CONTRIBUTE ────────────────────────────────────────────── -->
+<section class="contribute-section" id="contribute">
+  <div style="max-width:1400px;margin:0 auto;padding:4rem 1.5rem;text-align:center">
+    <div style="margin-bottom:2rem">
+      <span class="label">OPEN SOURCE</span>
+      <h2 style="font-family:var(--display);font-size:2.5rem;letter-spacing:-0.03em;margin:0.5rem 0">Want to contribute a game?</h2>
+      <p style="font-size:1.1rem;color:var(--muted);max-width:600px;margin:0 auto;line-height:1.6">
+        AILeela is open source. Build your own AI game and submit it to the arcade.
+      </p>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2rem;margin:3rem 0">
+      <div class="contribute-card">
+        <div class="contribute-step">1</div>
+        <h3>Fork & Clone</h3>
+        <p>Fork the repo on GitHub and clone it locally. No build step needed.</p>
+        <code>git clone https://github.com/[you]/AiLeela</code>
+      </div>
+      
+      <div class="contribute-card">
+        <div class="contribute-step">2</div>
+        <h3>Copy Template</h3>
+        <p>Use GAME_TEMPLATE.html as your starting point. Fill in the // CHANGE THIS sections.</p>
+      </div>
+      
+      <div class="contribute-card">
+        <div class="contribute-step">3</div>
+        <h3>Test & Submit</h3>
+        <p>Test in free mode and with API keys. Add your game card to index.html and open a PR.</p>
+      </div>
+    </div>
+    
+    <div class="contribute-buttons">
+      <a href="https://github.com/chinmayPatil10/AiLeela" target="_blank" class="arcade-btn-primary">
+        🚀 View on GitHub
+      </a>
+      <a href="https://github.com/chinmayPatil10/AiLeela/blob/main/CONTRIBUTING.md" target="_blank" class="arcade-btn-ghost">
+        📖 Read Guide
+      </a>
+    </div>
+    
+    <div style="margin-top:2rem;padding:1.5rem;background:var(--bg2);border-radius:8px;border:1px solid var(--dim)">
+      <h4 style="margin:0 0 0.5rem;color:var(--accent)">💡 Game Ideas We'd Love to See</h4>
+      <p style="font-size:0.9rem;color:var(--muted);margin:0">
+        The Philosophers • The Chefs • The News Desk • The Lawyers • The Critics • The Comedians
+      </p>
+    </div>
+  </div>
+</section>
+
 <!-- ── CTA ───────────────────────────────────────────────────── -->
 <section class="cta-section">
   <h2 class="cta-h2">Ready to play?<br>Insert your coin.</h2>
@@ -842,6 +954,7 @@
   <div class="footer-links">
     <a href="#games" onclick="event.preventDefault();document.getElementById('games').scrollIntoView({behavior:'smooth'})">Games</a>
     <a href="#key-entry" onclick="event.preventDefault();document.getElementById('key-entry').scrollIntoView({behavior:'smooth'})">Get Started</a>
+    <a href="#contribute" onclick="event.preventDefault();document.getElementById('contribute').scrollIntoView({behavior:'smooth'})">Contribute</a>
   </div>
   <div class="footer-mit">MIT LICENSE</div>
 </footer>
