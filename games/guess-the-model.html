@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guess the Model 🕵️ AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    .guess-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1px; background: var(--dim);
+    }
+    .guess-panel {
+      background: var(--bg2); display: flex; flex-direction: column; min-height: 240px;
+    }
+    .guess-panel.correct { border: 1px solid var(--green); background: rgba(64,232,144,0.04); }
+    .guess-panel.wrong   { border: 1px solid var(--pink);  background: rgba(232,48,138,0.04); }
+
+    .letter-badge {
+      font-family: var(--display); font-size: 1.5rem; color: var(--muted);
+      width: 36px; height: 36px; border: 1px solid var(--dim);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .reveal-name {
+      font-family: var(--display); font-size: 1rem;
+      display: none; padding: 0.5rem 1rem;
+      border-top: 1px solid var(--dim);
+    }
+    .guess-panel.correct .reveal-name { display: block; color: var(--green); }
+    .guess-panel.wrong   .reveal-name { display: block; color: var(--pink); }
+
+    .guess-footer {
+      padding: 0.6rem 1rem; border-top: 1px solid var(--dim);
+      background: var(--bg3);
+    }
+
+    .score-card {
+      background: var(--bg2); border: 1px solid var(--dim);
+      padding: 1.5rem; text-align: center; margin-top: 1px; display:none;
+    }
+    .score-card.visible { display: block; }
+    .score-num { font-family: var(--display); font-size: 3rem; color: var(--accent); }
+
+    .selector-note { font-size: 11px; color: var(--muted); margin-top: 0.5rem; min-height: 16px; }
+  </style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div id="no-key-overlay" class="no-key-overlay">
+  <div class="no-key-card">
+    <h2>FREE ROUND USED</h2>
+    <p>You've used your free round. Enter an API key to keep playing — Gemini is completely free!</p>
+    <a class="arcade-btn-primary" href="../index.html#key-entry">← GET A KEY</a>
+    <a class="arcade-btn-ghost" href="../index.html" style="margin-top:0.5rem">← BACK TO LOBBY</a>
+  </div>
+</div>
+
+<div class="game-page-wrap">
+
+  <!-- SETUP -->
+  <div id="setup" class="game-setup-card">
+    <div class="game-title">🕵️ GUESS THE MODEL</div>
+    <div class="game-tagline">All models answer the same question anonymously. Guess which is which.</div>
+
+    <div class="form-group">
+      <label class="form-label">THE QUESTION</label>
+      <div class="preset-chips" id="question-chips"></div>
+      <input type="text" id="question-input" class="arcade-input"
+        placeholder="...or type your own question" maxlength="120"
+        oninput="question = this.value.trim(); checkReady()">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">INCLUDE MODELS (min 3, max 5)</label>
+      <div id="model-selector"></div>
+      <div class="selector-note" id="selector-note"></div>
+    </div>
+
+    <button id="btn-start" class="arcade-btn-primary" style="width:100%;padding:0.85rem" disabled onclick="startGame()">
+      PICK A QUESTION FIRST
+    </button>
+  </div>
+
+  <!-- GAME AREA -->
+  <div id="game-area" style="display:none">
+    <div style="background:var(--bg3);border:1px solid var(--dim);padding:0.6rem 1rem;margin-bottom:1px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div class="label" style="margin-bottom:0.15rem">THE QUESTION</div>
+        <div style="font-family:var(--display);font-size:0.95rem" id="question-display">—</div>
+      </div>
+      <div class="label" id="phase-label">GENERATING...</div>
+    </div>
+
+    <div class="guess-grid" id="guess-grid"></div>
+
+    <!-- Guess phase -->
+    <div id="guess-phase" style="display:none;background:var(--bg2);border:1px solid var(--dim);padding:1.25rem;margin-top:1px">
+      <div class="label" style="margin-bottom:0.75rem">SUBMIT YOUR GUESSES</div>
+      <div id="guess-form"></div>
+      <button class="arcade-btn-primary" style="margin-top:1rem;width:100%" onclick="revealAnswers()">
+        REVEAL ANSWERS
+      </button>
+    </div>
+
+    <!-- Score -->
+    <div class="score-card" id="score-card">
+      <div class="label" style="margin-bottom:0.5rem">YOUR SCORE</div>
+      <div class="score-num" id="score-num">—</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:0.25rem" id="score-sub">correct</div>
+      <div style="margin-top:1.5rem">
+        <button class="arcade-btn-primary" onclick="showShareCard()">SHARE SCORE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="error-toast"></div>
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/share-card.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.inject('game');
+
+const _guard = KeyManager.guardPage();
+if (_guard === 'wall') document.getElementById('no-key-overlay').classList.add('visible');
+
+const PRESETS = [
+  'What is love?',
+  'Should pineapple go on pizza?',
+  'What\'s the meaning of life in one sentence?',
+  'Describe the color blue to someone who\'s never seen it',
+  'What\'s the most overrated thing in the world?',
+  'What does it feel like to be conscious?',
+];
+
+const LETTERS = ['A','B','C','D','E'];
+
+let question = '';
+let panelData = []; // { modelSpec, letter, el, bodyEl }
+let score = 0;
+
+// Preset chips
+const chipWrap = document.getElementById('question-chips');
+PRESETS.forEach(p => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-chip';
+  btn.textContent = p;
+  btn.onclick = () => {
+    document.querySelectorAll('.preset-chip').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('question-input').value = p;
+    question = p; checkReady();
+  };
+  chipWrap.appendChild(btn);
+});
+
+// Model selector (min 3 for this game)
+const selector = buildSelector(document.getElementById('model-selector'), {
+  min: 3, max: 5, onChange: () => {
+    document.getElementById('selector-note').textContent = selector.getNote();
+    checkReady();
+  }
+});
+document.getElementById('selector-note').textContent = selector.getNote();
+
+function checkReady() {
+  const btn = document.getElementById('btn-start');
+  if (question && selector.isValid()) {
+    btn.disabled = false; btn.textContent = '🕵️ START GUESSING';
+  } else {
+    btn.disabled = true;
+    btn.textContent = !question ? 'PICK A QUESTION FIRST' : 'SELECT 3–5 MODELS';
+  }
+}
+
+function startGame() {
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game-area').style.display = 'block';
+  document.getElementById('question-display').textContent = question;
+
+  // Shuffle the order so it's not predictable
+  const models = selector.getModels().sort(() => Math.random() - 0.5);
+
+  const gGrid = document.getElementById('guess-grid');
+  gGrid.innerHTML = '';
+  panelData = [];
+
+  models.forEach((modelSpec, idx) => {
+    const letter = LETTERS[idx];
+    const panel = document.createElement('div');
+    panel.className = 'guess-panel';
+    panel.innerHTML = `
+      <div class="panel-header">
+        <div class="letter-badge">${letter}</div>
+        <span class="arcade-tag" id="gtag-${letter}">GENERATING...</span>
+      </div>
+      <div class="panel-body panel-content" id="gbody-${letter}">
+        <div class="panel-thinking"><span>thinking</span><span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
+      </div>
+      <div class="reveal-name" id="reveal-${letter}"></div>
+    `;
+    gGrid.appendChild(panel);
+    panelData.push({ modelSpec, letter, el: panel, bodyEl: panel.querySelector(`#gbody-${letter}`) });
+  });
+
+  runGame();
+}
+
+async function runGame() {
+  const prompt = `Answer this question in 3-5 sentences: "${question}". Be direct and thoughtful. Don't start with "I" or mention your model name.${NO_META}`;
+
+  let doneCount = 0;
+  const total = panelData.length;
+
+  await Promise.allSettled(panelData.map(({ modelSpec, letter, el, bodyEl }) => {
+    el.classList.add('streaming');
+    return streamToPanel(modelSpec, [{ role:'user', content: prompt }], bodyEl, el)
+      .then(() => {
+        const tag = document.getElementById(`gtag-${letter}`);
+        if (tag) { tag.textContent = 'DONE'; tag.className = 'arcade-tag'; }
+        doneCount++;
+        if (doneCount === total) showGuessPhase();
+      });
+  }));
+}
+
+function showGuessPhase() {
+  document.getElementById('phase-label').textContent = 'MAKE YOUR GUESSES';
+  const phase = document.getElementById('guess-phase');
+  const form = document.getElementById('guess-form');
+  phase.style.display = 'block';
+
+  const modelOptions = panelData.map(d =>
+    `<option value="${d.modelSpec.modelId}">${d.modelSpec.display}</option>`
+  ).join('');
+
+  panelData.forEach(({ letter }) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem';
+    row.innerHTML = `
+      <div class="letter-badge" style="flex-shrink:0">${letter}</div>
+      <select id="guess-${letter}" class="arcade-select" style="flex:1">
+        <option value="">— Which model is this? —</option>
+        ${modelOptions}
+      </select>
+    `;
+    form.appendChild(row);
+  });
+
+  phase.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function revealAnswers() {
+  score = 0;
+  const guesses = {};
+  let allFilled = true;
+
+  panelData.forEach(({ letter }) => {
+    const val = document.getElementById(`guess-${letter}`)?.value;
+    if (!val) { allFilled = false; }
+    guesses[letter] = val;
+  });
+
+  if (!allFilled) { showToast('Please make a guess for every panel'); return; }
+
+  panelData.forEach(({ modelSpec, letter, el }) => {
+    const guess = guesses[letter];
+    const correct = guess === modelSpec.modelId;
+    if (correct) score++;
+    el.classList.add(correct ? 'correct' : 'wrong');
+    const rev = document.getElementById(`reveal-${letter}`);
+    if (rev) {
+      rev.textContent = correct
+        ? `✓ ${modelSpec.display}`
+        : `✗ This was ${modelSpec.display}`;
+    }
+  });
+
+  if (_guard === 'free') KeyManager.markFreeUsed();
+
+  document.getElementById('guess-phase').style.display = 'none';
+  const card = document.getElementById('score-card');
+  card.classList.add('visible');
+  document.getElementById('score-num').textContent = `${score}/${panelData.length}`;
+  document.getElementById('score-sub').textContent =
+    score === panelData.length ? '🎉 Perfect score!' :
+    score === 0 ? 'Better luck next time!' : 'correct — not bad!';
+  card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function showShareCard() {
+  const total = panelData.length;
+  ShareCard.show({
+    game: 'Guess the Model',
+    headline: `${score}/${total} correct 🕵️`,
+    body: score === total ? 'Perfect score! You can tell the AIs apart.' :
+          score === 0 ? 'Could not tell the AIs apart at all 😅' :
+          'Can you tell the difference between AI models?',
+    tweetText: `I got ${score}/${total} on Guess the Model! Can you do better? AILeela`,
+  });
+}
+</script>
+</body>
+</html>

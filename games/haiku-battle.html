@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haiku Battle 🎋 AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    .haiku-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1px;
+      background: var(--dim);
+    }
+    .haiku-panel {
+      background: var(--bg2);
+      border: 1px solid transparent;
+      display: flex; flex-direction: column;
+      min-height: 220px;
+      cursor: crosshair;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .haiku-panel.streaming { border-color: var(--accent); }
+    .haiku-panel.done      { border-color: transparent; }
+    .haiku-panel.vote-mode:hover { background: var(--bg3); border-color: var(--accent); }
+    .haiku-panel.winner    {
+      border-color: var(--accent);
+      background: rgba(240,224,64,0.05);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .haiku-panel-header {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--dim);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .haiku-text {
+      flex: 1; padding: 1.25rem 1rem;
+      font-size: 14px; line-height: 2;
+      font-style: italic;
+      color: var(--text);
+      white-space: pre-wrap;
+      letter-spacing: 0.02em;
+    }
+
+    .winner-crown {
+      position: absolute; top: -12px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.4rem; display: none;
+    }
+    .haiku-panel.winner .winner-crown { display: block; }
+
+    .vote-hint {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--muted);
+      text-align: center; padding: 0.5rem;
+      border-top: 1px solid var(--dim);
+      display: none;
+    }
+    .haiku-panel.vote-mode .vote-hint { display: block; }
+    .haiku-panel.winner    .vote-hint { display: none; }
+
+    .selector-note { font-size: 11px; color: var(--muted); margin-top: 0.5rem; min-height: 16px; }
+  </style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div id="no-key-overlay" class="no-key-overlay">
+  <div class="no-key-card">
+    <h2>FREE ROUND USED</h2>
+    <p>You've used your free round. Enter an API key to keep playing — Gemini is completely free!</p>
+    <a class="arcade-btn-primary" href="../index.html#key-entry">← GET A KEY</a>
+    <a class="arcade-btn-ghost" href="../index.html" style="margin-top:0.5rem">← BACK TO LOBBY</a>
+  </div>
+</div>
+
+<div class="game-page-wrap">
+
+  <!-- SETUP -->
+  <div id="setup" class="game-setup-card">
+    <div class="game-title">🎋 HAIKU BATTLE</div>
+    <div class="game-tagline">One topic. Every model writes a haiku. You vote the best.</div>
+
+    <div class="form-group">
+      <label class="form-label">BATTLE TOPIC</label>
+      <div class="preset-chips" id="topic-chips"></div>
+      <input type="text" id="topic-input" class="arcade-input"
+        placeholder="...or type your own topic" maxlength="80"
+        oninput="topic = this.value.trim(); checkReady()">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">SELECT MODELS (pick at least 2)</label>
+      <div id="model-selector"></div>
+      <div class="selector-note" id="selector-note"></div>
+    </div>
+
+    <button id="btn-start" class="arcade-btn-primary" style="width:100%;padding:0.85rem" disabled onclick="startBattle()">
+      PICK A TOPIC FIRST
+    </button>
+  </div>
+
+  <!-- BATTLE AREA -->
+  <div id="battle" style="display:none">
+    <div style="background:var(--bg3);border:1px solid var(--dim);padding:0.6rem 1rem;margin-bottom:1px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div class="label" style="margin-bottom:0.15rem">HAIKU BATTLE</div>
+        <div style="font-family:var(--display);font-size:1rem" id="battle-topic-label">—</div>
+      </div>
+      <div class="label" id="status-label">GENERATING...</div>
+    </div>
+
+    <div class="haiku-grid" id="haiku-grid"></div>
+
+    <div class="vote-section" id="vote-section" style="margin-top:1px">
+      <div class="vote-title">Which haiku wins?</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Click on a haiku panel to vote</div>
+    </div>
+  </div>
+</div>
+
+<div id="error-toast"></div>
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/share-card.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.inject('game');
+
+const _guard = KeyManager.guardPage();
+if (_guard === 'wall') document.getElementById('no-key-overlay').classList.add('visible');
+
+const PRESETS = [
+  'Artificial intelligence','Monday morning',
+  'JavaScript bugs','Coffee','The internet',
+  'Debugging at 3am','A blank page',
+];
+
+let topic = '';
+let voted = false;
+let panelData = []; // { modelSpec, el, bodyEl }
+
+// Preset chips
+const chipWrap = document.getElementById('topic-chips');
+PRESETS.forEach(p => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-chip';
+  btn.textContent = p;
+  btn.onclick = () => {
+    document.querySelectorAll('.preset-chip').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('topic-input').value = p;
+    topic = p; checkReady();
+  };
+  chipWrap.appendChild(btn);
+});
+
+// Model selector
+const selector = buildSelector(document.getElementById('model-selector'), {
+  min: 2, max: 5, onChange: checkReady
+});
+document.getElementById('selector-note').textContent = selector.getNote();
+
+function checkReady() {
+  document.getElementById('selector-note').textContent = selector.getNote();
+  const btn = document.getElementById('btn-start');
+  if (topic && selector.isValid()) {
+    btn.disabled = false; btn.textContent = '🎋 BEGIN THE BATTLE';
+  } else {
+    btn.disabled = true;
+    btn.textContent = !topic ? 'PICK A TOPIC FIRST' : 'SELECT AT LEAST 2 MODELS';
+  }
+}
+
+function startBattle() {
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('battle').style.display = 'block';
+  document.getElementById('battle-topic-label').textContent = topic;
+
+  const models = selector.getModels();
+  const grid = document.getElementById('haiku-grid');
+  grid.innerHTML = '';
+  panelData = [];
+
+  models.forEach(modelSpec => {
+    const safeId = modelSpec.modelId.replace(/[^a-z0-9]/g, '-');
+    const panel = document.createElement('div');
+    panel.className = 'haiku-panel';
+    panel.innerHTML = `
+      <div class="winner-crown">🏆</div>
+      <div class="haiku-panel-header">
+        <span class="panel-model-label" style="color:${getModelColor(modelSpec.provider || modelSpec.modelId)}">${modelSpec.display}</span>
+        <span class="arcade-tag" id="tag-${safeId}">WRITING...</span>
+      </div>
+      <div class="haiku-text panel-content" id="haiku-${safeId}">
+        <div class="panel-thinking"><span>composing</span><span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
+      </div>
+      <div class="vote-hint">CLICK TO VOTE</div>
+    `;
+    grid.appendChild(panel);
+    panelData.push({ modelSpec, el: panel, bodyEl: panel.querySelector(`#haiku-${safeId}`), safeId });
+  });
+
+  runBattle();
+}
+
+async function runBattle() {
+  const prompt = `Write a haiku about: "${topic}". A haiku has exactly 3 lines: 5 syllables, 7 syllables, 5 syllables. Output ONLY the 3 lines of the haiku — no title, no explanation, no labels, no punctuation beyond commas. Be creative and evocative.${NO_META}`;
+
+  let doneCount = 0;
+  const total = panelData.length;
+
+  await Promise.allSettled(panelData.map(({ modelSpec, el, bodyEl, safeId }) => {
+    el.classList.add('streaming');
+    return streamToPanel(
+      modelSpec,
+      [{ role:'user', content: prompt }],
+      bodyEl, el
+    ).then(({ text }) => {
+      el.classList.remove('streaming');
+      el.classList.add('done');
+      const tag = document.getElementById(`tag-${safeId}`);
+      if (tag) { tag.textContent = 'READY'; tag.className = 'arcade-tag green'; }
+      doneCount++;
+      if (doneCount === total) enableVoting();
+    });
+  }));
+}
+
+function enableVoting() {
+  document.getElementById('status-label').textContent = 'VOTE FOR THE WINNER';
+  document.getElementById('vote-section').classList.add('visible');
+  if (_guard === 'free') KeyManager.markFreeUsed();
+  panelData.forEach(({ modelSpec, el, bodyEl }) => {
+    el.classList.add('vote-mode');
+    el.onclick = () => {
+      if (voted) return;
+      voted = true;
+      declareWinner(modelSpec, bodyEl.textContent.trim());
+    };
+  });
+}
+
+function declareWinner(modelSpec, haikuText) {
+  panelData.forEach(d => {
+    d.el.classList.remove('vote-mode', 'winner');
+    d.el.onclick = null;
+    const hint = d.el.querySelector('.vote-hint');
+    if (hint) hint.style.display = 'none';
+  });
+  const winner = panelData.find(d => d.modelSpec.modelId === modelSpec.modelId);
+  if (winner) winner.el.classList.add('winner');
+
+  // Extract haiku lines from rendered .sentence spans or plain text
+  const winnerBodyEl = panelData.find(d => d.modelSpec.modelId === modelSpec.modelId)?.bodyEl;
+  const sentenceEls = winnerBodyEl ? Array.from(winnerBodyEl.querySelectorAll('.sentence, p')) : [];
+  const lines = sentenceEls.length > 0
+    ? sentenceEls.map(el => el.textContent.trim()).filter(Boolean).slice(0, 3)
+    : haikuText.split(/[\n.!?]+/).map(l => l.trim()).filter(Boolean).slice(0, 3);
+  const haikuForTweet = lines.join(' / ');
+
+  document.getElementById('vote-section').style.display = 'none';
+  ShareCard.show({
+    game: 'Haiku Battle',
+    headline: `${modelSpec.display} wins 🎋`,
+    body: haikuForTweet || haikuText.slice(0, 100),
+    tweetText: `${modelSpec.display} wrote the winning haiku about "${topic}":\n\n${haikuForTweet}\n\n— AILeela`,
+  });
+}
+</script>
+</body>
+</html>

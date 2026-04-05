@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AILeela — where AI comes to play</title>
+  <meta name="description" content="All day you made AI work for you. Tonight, just watch it play. Claude vs GPT. Gemini vs Mistral. Your key. Their playground. Free forever.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/arcade.css">
+  <style>
+    /* ── LOBBY-SPECIFIC STYLES ─────────────────────────────── */
+
+    /* sticky nav override for lobby */
+    .lobby-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0 1.5rem; height: 52px;
+      background: rgba(8,8,10,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--dim);
+    }
+    .lobby-nav .nav-logo { display: flex; align-items: center; gap: 0.3rem; }
+    .lobby-nav .nav-logo-plug { font-family: var(--display); font-size: 1.05rem; color: var(--accent); }
+    .lobby-nav .nav-logo-ai   { font-family: var(--display); font-size: 1.05rem; color: var(--text); }
+    .lobby-nav .nav-logo-tag  {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.15em;
+      color: var(--bg); background: var(--accent);
+      padding: 1px 5px; text-transform: uppercase; margin-left: 4px;
+    }
+    .lobby-nav .spacer { flex: 1; }
+    .lobby-nav .nav-links { display: flex; align-items: center; gap: 1.25rem; }
+    .lobby-nav .nav-links a {
+      font-size: 11px; color: var(--muted); letter-spacing: 0.1em;
+      text-transform: uppercase; transition: color 0.15s;
+    }
+    .lobby-nav .nav-links a:hover { color: var(--accent); }
+
+    /* ── HERO ───────────────────────────────────────────────── */
+    .hero {
+      position: relative; z-index: 1;
+      max-width: 1400px; margin: 0 auto;
+      padding: 52px 1.5rem 0;
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+      min-height: -webkit-fill-available;
+    }
+    @media (max-width: 900px) { .hero { grid-template-columns: 1fr; gap: 2.5rem; padding: 52px 1rem 0; } }
+
+    .hero-eyebrow {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.2em;
+      color: var(--muted); text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .hero-eyebrow span { color: var(--accent); }
+
+    .hero-h1 {
+      font-family: var(--display);
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+    }
+    .hero-h1 .line-1 { color: var(--text); display: block; }
+    .hero-h1 .line-2 { color: var(--accent); display: block; }
+    .hero-h1 .line-3 { color: var(--pink); display: block; }
+    .hero-cursor {
+      display: inline-block;
+      width: 4px; height: 0.85em;
+      background: var(--pink);
+      vertical-align: middle;
+      margin-left: 4px;
+      animation: blink-cursor 0.9s step-end infinite;
+    }
+
+    .hero-sub {
+      font-size: 13px; color: var(--muted);
+      line-height: 1.7; margin-bottom: 1.75rem;
+      max-width: 400px;
+    }
+
+    .hero-ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+
+    .hero-npm {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--bg3); border: 1px solid var(--dim);
+      padding: 0.35rem 0.75rem; font-size: 12px;
+    }
+    .hero-npm .npm-prefix { color: var(--muted); }
+    .hero-npm .npm-cmd { color: var(--green); font-weight: 700; }
+
+    /* ── KEY BOX ────────────────────────────────────────────── */
+    .key-box {
+      background: var(--bg2);
+      border: 1px solid var(--dim);
+      border-top: 2px solid var(--accent);
+      padding: 1.5rem;
+      position: relative;
+    }
+    .key-box::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+    }
+    .key-box-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.18em;
+      color: var(--accent); text-transform: uppercase;
+      margin-bottom: 1rem; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .key-box-label::before { content: '▶'; }
+
+    .key-row { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+    .key-row .arcade-input { flex: 1; }
+
+    .key-accepted {
+      display: none; align-items: center; gap: 0.4rem;
+      font-size: 11px; color: var(--green);
+      margin-bottom: 0.75rem; font-weight: 700;
+    }
+    .key-accepted.visible { display: flex; }
+
+    /* ── KEY TABS (TRY FREE / MY KEY) ──────────────────────── */
+    .key-tab {
+      flex: 1; padding: 0.6rem 0.75rem;
+      background: none; border: none; border-bottom: 2px solid transparent;
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); cursor: crosshair;
+      transition: all 0.15s;
+    }
+    .key-tab:hover { color: var(--text); }
+    .key-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .key-play-btn {
+      width: 100%; margin-top: 0.5rem;
+      padding: 0.75rem;
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: crosshair;
+      transition: all 0.15s;
+    }
+    .key-play-btn:hover { background: var(--accent); color: var(--bg); }
+
+    /* ── ACCORDIONS ─────────────────────────────────────────── */
+    .accordion { margin-top: 1rem; border-top: 1px solid var(--dim); }
+    .accordion-item { border-bottom: 1px solid var(--dim); }
+    .accordion-trigger {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 0; background: none; border: none;
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: crosshair; color: var(--text); text-align: left;
+      transition: color 0.15s;
+    }
+    .accordion-trigger:hover { color: var(--accent); }
+    .accordion-trigger .acc-label { flex: 1; }
+    .accordion-trigger .acc-icon { transition: transform 0.25s; color: var(--muted); font-size: 9px; }
+    .accordion-trigger.open .acc-icon { transform: rotate(180deg); }
+    .accordion-body { display: none; padding-bottom: 1rem; }
+    .accordion-body.open { display: block; }
+
+    /* safety points */
+    .safety-points { margin-top: 0.75rem; }
+    .safety-point {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      margin-bottom: 0.6rem; font-size: 12px; line-height: 1.6;
+    }
+    .safety-point .check { color: var(--green); flex-shrink: 0; margin-top: 1px; }
+    .safety-warning {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      background: rgba(240,224,64,0.06); border: 1px solid rgba(240,224,64,0.2);
+      padding: 0.6rem 0.75rem; font-size: 11px; color: var(--muted);
+      margin-top: 0.75rem;
+    }
+
+    /* ── KEY VAULT TABLE ──────────────────────────────────── */
+    .vault-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+    .vault-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .vault-add-btn {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: transparent;
+      border: 1px solid var(--dim);
+      color: var(--accent);
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      clip-path: polygon(4px 0%,100% 0%,100% calc(100% - 4px),calc(100% - 4px) 100%,0% 100%,0% 4px);
+      transition: background 0.15s;
+    }
+    .vault-add-btn:hover { background: rgba(240,224,64,0.08); }
+    .vault-table { width: 100%; border-collapse: collapse; }
+    .vault-row td { padding: 0.45rem 0; border-bottom: 1px solid var(--dim); vertical-align: middle; }
+    .vault-row:last-child td { border-bottom: none; }
+    .vault-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--dim); display: inline-block; margin-right: 0.5rem;
+      flex-shrink: 0;
+    }
+    .vault-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .vault-provider { font-size: 12px; letter-spacing: 0.06em; white-space: nowrap; padding-right: 0.75rem; }
+    .vault-key-mask { font-size: 11px; color: var(--muted); font-family: var(--mono); flex: 1; }
+    .vault-key-empty { font-size: 11px; color: var(--dim); font-style: italic; flex: 1; }
+    .vault-action-btn {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      background: transparent;
+      border: 1px solid var(--dim);
+      color: var(--muted);
+      padding: 0.15rem 0.45rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .vault-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .vault-action-btn.remove { border-color: var(--dim); }
+    .vault-action-btn.remove:hover { border-color: var(--pink); color: var(--pink); }
+    .vault-inline-add {
+      padding: 0.5rem 0 0.25rem;
+      display: none;
+    }
+    .vault-inline-add.open { display: block; }
+    .vault-inline-row { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.3rem; }
+    .vault-inline-row .arcade-input { flex: 1; padding: 0.35rem 0.5rem; font-size: 12px; }
+    .vault-inline-hint { font-size: 10px; color: var(--muted); }
+    .vault-success-flash {
+      font-size: 11px; color: var(--green);
+      letter-spacing: 0.06em; padding: 0.3rem 0;
+    }
+
+    /* key guide tabs */
+    .guide-tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.75rem; }
+    .guide-tab {
+      padding: 0.25rem 0.65rem; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      background: transparent; border: 1px solid var(--dim);
+      color: var(--muted); cursor: crosshair; transition: all 0.15s;
+    }
+    .guide-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(240,224,64,0.06); }
+    .guide-panel { display: none; }
+    .guide-panel.active { display: block; }
+    .guide-steps { list-style: none; }
+    .guide-step {
+      display: flex; gap: 0.75rem; align-items: flex-start;
+      margin-bottom: 0.6rem; font-size: 12px; line-height: 1.6;
+    }
+    .step-num {
+      flex-shrink: 0; width: 18px; height: 18px;
+      background: var(--bg4); border: 1px solid var(--dim);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: var(--muted);
+      margin-top: 2px;
+    }
+    .guide-cost {
+      margin-top: 0.75rem; font-size: 11px;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+
+    /* ── THREE.JS CANVAS ────────────────────────────────────── */
+    #threejs-wrap {
+      height: 160px; background: var(--bg3); border: 1px solid var(--dim);
+      position: relative; overflow: hidden; margin-bottom: 0.75rem;
+      border-radius: var(--radius);
+    }
+    #threejs-canvas { width: 100%; height: 100%; display: block; }
+    #speech-bubble {
+      position: absolute; top: 12px; right: 16px;
+      background: var(--accent); color: var(--bg);
+      font-family: var(--mono); font-size: 10px; font-weight: 700;
+      padding: 4px 8px; max-width: 140px; text-align: center;
+      opacity: 0; transition: opacity 0.4s;
+      pointer-events: none;
+    }
+    #speech-bubble::after {
+      content: '';
+      position: absolute; bottom: -6px; left: 50%;
+      transform: translateX(-50%);
+      border: 3px solid transparent;
+      border-top-color: var(--accent);
+    }
+
+    /* ── STATS ROW ──────────────────────────────────────────── */
+    .stats-row {
+      position: relative; z-index: 1;
+      max-width: 1400px; margin: 0 auto;
+      padding: 0 1.5rem 2rem;
+      display: flex; gap: 2rem; flex-wrap: wrap;
+    }
+    .stat-item { font-size: 12px; color: var(--muted); }
+    .stat-item strong { font-family: var(--display); font-size: 1.5rem; color: var(--accent); display: block; }
+
+    /* ── GAMES GRID ─────────────────────────────────────────── */
+    .games-section {
+      position: relative; z-index: 1;
+      background: var(--bg2); border-top: 1px solid var(--dim);
+      border-bottom: 1px solid var(--dim);
+      padding: 3rem 1.5rem;
+    }
+    .games-inner { margin: 0 auto; }
+    .games-header { margin-bottom: 2rem; }
+    .games-header h2 { font-family: var(--display); font-size: 2rem; letter-spacing: -0.03em; margin-bottom: 0.3rem; }
+    .games-header p { font-size: 12px; color: var(--muted); }
+
+    .games-grid {
+      display: flex;
+      gap: 1.5rem;
+      overflow-x: auto;
+      padding: 1rem 0;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: var(--dim) var(--bg2);
+    }
+    .games-grid::-webkit-scrollbar {
+      height: 8px;
+    }
+    .games-grid::-webkit-scrollbar-track {
+      background: var(--bg2);
+      border-radius: 4px;
+    }
+    .games-grid::-webkit-scrollbar-thumb {
+      background: var(--dim);
+      border-radius: 4px;
+    }
+    .games-grid::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+
+    .game-card {
+      background: var(--bg2);
+      border: 1px solid var(--dim);
+      border-radius: 8px;
+      cursor: crosshair;
+      display: flex;
+      flex-direction: column;
+      min-width: 320px;
+      max-width: 320px;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      color: inherit;
+      scroll-snap-align: start;
+      position: relative;
+    }
+    .game-card:hover {
+      background: var(--bg3);
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(240, 224, 64, 0.3);
+      transform: translateY(-4px);
+    }
+    .game-card:hover .game-card-play { opacity: 1; }
+
+    .game-art {
+      height: 130px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3.5rem;
+      position: relative; overflow: hidden;
+    }
+    .game-art-num {
+      position: absolute; top: 0.6rem; left: 0.75rem;
+      font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.2);
+      letter-spacing: 0.1em;
+    }
+    .game-art-diff {
+      position: absolute; top: 0.6rem; right: 0.75rem;
+    }
+
+    .game-card-body { padding: 1rem 1rem 0.75rem; flex: 1; }
+    .game-card-name { font-family: var(--display); font-size: 1.1rem; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+    .game-card-tag  { font-size: 11px; color: var(--muted); margin-bottom: 0.6rem; line-height: 1.5; }
+    .game-card-models { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .game-card-model-pill {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 1px 6px; border: 1px solid var(--dim); color: var(--muted);
+    }
+
+    .game-card-footer {
+      padding: 0.6rem 1rem;
+      border-top: 1px solid var(--dim);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .game-card-play {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+      color: var(--accent); opacity: 0; transition: opacity 0.15s;
+    }
+
+    /* ── HOW IT WORKS ───────────────────────────────────────── */
+    .how-section {
+      position: relative; z-index: 1;
+      padding: 3.5rem 1.5rem;
+      max-width: 1400px; margin: 0 auto;
+    }
+    .how-header { margin-bottom: 2.5rem; }
+    .how-header h2 { font-family: var(--display); font-size: 2rem; letter-spacing: -0.03em; margin-bottom: 0.3rem; }
+    .how-steps {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;
+    }
+    @media (max-width: 768px) { .how-steps { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .how-steps { grid-template-columns: 1fr; } }
+
+    .how-step { position: relative; }
+    .how-step-num {
+      font-family: var(--display); font-size: 4rem; color: var(--bg4);
+      line-height: 1; margin-bottom: -1.2rem; letter-spacing: -0.03em;
+    }
+    .how-step-title { font-weight: 700; font-size: 14px; margin-bottom: 0.4rem; }
+    .how-step-desc  { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    /* ── WHY FREE ────────────────────────────────────────────── */
+    .why-section {
+      position: relative; z-index: 1;
+      background: var(--bg2); border-top: 1px solid var(--dim); border-bottom: 1px solid var(--dim);
+      padding: 3.5rem 1.5rem;
+    }
+    .why-inner {
+      max-width: 1400px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start;
+    }
+    @media (max-width: 768px) { .why-inner { grid-template-columns: 1fr; gap: 2rem; } }
+    .why-left h2 { font-family: var(--display); font-size: 2rem; letter-spacing: -0.03em; margin-bottom: 0.75rem; }
+    .why-left p  { font-size: 13px; color: var(--muted); line-height: 1.7; }
+    .why-cards { display: flex; flex-direction: column; gap: 0.6rem; }
+    .why-card {
+      background: var(--bg3); border: 1px solid var(--dim);
+      padding: 0.75rem 1rem; display: flex; align-items: flex-start; gap: 0.75rem;
+    }
+    .why-card-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .why-card-title { font-size: 12px; font-weight: 700; margin-bottom: 0.2rem; }
+    .why-card-sub   { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+    /* ── COST BENTO ─────────────────────────────────────────── */
+    .cost-section {
+      position: relative; z-index: 1;
+      padding: 3.5rem 1.5rem;
+      max-width: 1400px; margin: 0 auto;
+    }
+    .cost-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    }
+    @media (max-width: 640px) { .cost-grid { grid-template-columns: 1fr; } }
+    .cost-card {
+      background: var(--bg2); border: 1px solid var(--dim); padding: 1.25rem;
+    }
+    .cost-card-label { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+    .cost-card h3 { font-family: var(--display); font-size: 2.5rem; letter-spacing: -0.03em; color: var(--accent); }
+    .cost-table { width: 100%; border-collapse: collapse; }
+    .cost-table td { padding: 0.3rem 0; font-size: 12px; border-bottom: 1px solid var(--bg4); }
+    .cost-table td:last-child { text-align: right; color: var(--green); }
+    .cost-table tr:last-child td { border-bottom: none; }
+
+    /* ── CTA ────────────────────────────────────────────────── */
+    .cta-section {
+      position: relative; z-index: 1;
+      background: var(--bg2); border-top: 1px solid var(--dim); border-bottom: 1px solid var(--dim);
+      padding: 5rem 1.5rem; text-align: center;
+    }
+    .cta-h2 { font-family: var(--display); font-size: clamp(1.75rem, 4vw, 3rem); letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+    .cta-sub { font-size: 12px; color: var(--muted); margin-bottom: 2rem; }
+    .cta-btns { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .cta-fine { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+    .cta-fine span { margin: 0 0.4rem; }
+
+    /* ── FOOTER ─────────────────────────────────────────────── */
+    footer {
+      position: relative; z-index: 1;
+      padding: 2rem 1.5rem;
+      max-width: 1400px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    }
+    .footer-logo { display: flex; align-items: center; gap: 0.3rem; }
+    .footer-logo .plug { font-family: var(--display); color: var(--accent); }
+    .footer-logo .ai   { font-family: var(--display); color: var(--text); }
+    .footer-links { display: flex; gap: 1.25rem; }
+    .footer-links a { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; transition: color 0.15s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-mit { font-size: 10px; color: var(--dim); letter-spacing: 0.1em; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────────────────────── -->
+<nav class="lobby-nav">
+  <div class="nav-logo">
+    <span class="nav-logo-plug">AI</span><span class="nav-logo-ai">Leela</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="nav-links">
+    <a href="#games" onclick="event.preventDefault();document.getElementById('games').scrollIntoView({behavior:'smooth'})">Games</a>
+    <a href="#key-entry" onclick="event.preventDefault();document.getElementById('key-entry').scrollIntoView({behavior:'smooth'})"
+       class="arcade-btn-primary" style="padding:0.4rem 1rem;font-size:11px">INSERT COIN</a>
+  </div>
+</nav>
+
+<!-- ── HERO ────────────────────────────────────────────────── -->
+<section class="hero" id="key-entry">
+  <!-- LEFT -->
+  <div class="hero-left">
+    <p class="hero-eyebrow">where AI comes to play</p>
+    <h1 class="hero-h1">
+      <span class="line-1">All day you made AI</span>
+      <span class="line-2">work for you.</span>
+      <span class="line-3">Tonight, just watch it play.</span>
+    </h1>
+    <p class="hero-sub">
+      Claude vs GPT. Gemini vs Mistral.
+      Debating. Roasting. Writing haikus.
+      Being genuinely surprising.
+    </p>
+    <p class="hero-sub">
+      Your key. Their playground. Free forever.
+    </p>
+    <div class="hero-ctas">
+      <a
+        class="arcade-btn-primary"
+        href="#key-entry"
+        onclick="event.preventDefault();document.getElementById('key-entry').scrollIntoView({behavior:'smooth'})"
+      >▶ INSERT COIN TO PLAY</a>
+      <a
+        class="arcade-btn-ghost"
+        href="#games"
+        onclick="event.preventDefault();document.getElementById('games').scrollIntoView({behavior:'smooth'})"
+      >SEE GAMES</a>
+    </div>
+    
+    <!-- STATS INSIDE HERO -->
+    <div class="stats-row" style="margin-top: 1.5rem;">
+      <div class="stat-item"><strong>6</strong>Games</div>
+      <div class="stat-item"><strong>5</strong>Models</div>
+      <div class="stat-item"><strong>$0</strong>Forever</div>
+      <div class="stat-item"><strong>0</strong>Servers</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: KEY BOX -->
+  <div class="hero-right">
+
+    <!-- TRY FREE BANNER -->
+    <!-- <div id="try-free-banner" style="background:rgba(232,48,138,0.08);border:1px solid rgba(232,48,138,0.25);padding:0.75rem 1rem;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:0.2rem">Don't have a key yet?</div>
+        <div style="font-size:11px;color:var(--muted)">No signup. Powered by free AI. Limited to 1 round.</div>
+      </div>
+      <a class="arcade-btn-primary" href="games/model-roast.html"
+        style="background:var(--pink);clip-path:none;white-space:nowrap;font-size:11px"
+        onclick="return startFreePlay(event)">
+        TRY FREE →
+      </a>
+    </div> -->
+
+    <div class="key-box">
+      <!-- TABS -->
+      <div style="display:flex;border-bottom:1px solid var(--dim);margin-bottom:1rem">
+        <button class="key-tab active" id="tab-free" onclick="switchKeyTab('free')">
+          ⚡ TRY FREE
+        </button>
+        <button class="key-tab" id="tab-mykey" onclick="switchKeyTab('mykey')">
+          🔑 MY KEY
+        </button>
+      </div>
+
+      <!-- TRY FREE TAB — content rendered by renderFreeTab() -->
+      <div id="tab-free-content"></div>
+
+      <!-- MY KEY TAB — key vault table -->
+      <div id="tab-mykey-content" style="display:none">
+        <div id="key-vault"><!-- rendered by renderKeyVault() --></div>
+      </div>
+
+      <!-- ACCORDIONS -->
+      <div class="accordion">
+        <!-- IS MY KEY SAFE -->
+        <div class="accordion-item">
+          <button class="accordion-trigger" onclick="toggleAcc('safety', this)">
+            <span class="acc-label" style="color:var(--green)">🔒 IS MY KEY SAFE?</span>
+            <span class="acc-icon">▼</span>
+          </button>
+          <div class="accordion-body" id="acc-safety">
+            <div id="threejs-wrap" style="display:none">
+              <canvas id="threejs-canvas"></canvas>
+              <div id="speech-bubble"></div>
+            </div>
+            <div class="safety-points">
+              <div class="safety-point">
+                <span class="check">✓</span>
+                <span>Your key is stored only in <strong>sessionStorage</strong> — it's gone the moment you close the tab.</span>
+              </div>
+              <div class="safety-point">
+                <span class="check">✓</span>
+                <span>API calls go <strong>directly from your browser to the AI provider</strong> — no proxy, no server in between.</span>
+              </div>
+              <div class="safety-point">
+                <span class="check">✓</span>
+                <span>We have <strong>zero backend</strong>. There's nothing to log, leak, or hack. This is a static HTML file.</span>
+              </div>
+            </div>
+            <div class="safety-warning">
+              <span>⚠</span>
+              <span>Your key is visible in browser DevTools Network tab — don't use this on a shared or public computer.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- HOW DO I GET A KEY -->
+        <div class="accordion-item">
+          <button class="accordion-trigger" onclick="toggleAcc('keys', this)">
+            <span class="acc-label" style="color:var(--pink)">🗝️ HOW DO I GET A KEY?</span>
+            <span class="acc-icon">▼</span>
+          </button>
+          <div class="accordion-body" id="acc-keys">
+            <div class="guide-tabs">
+              <button class="guide-tab active" onclick="switchGuide('openai', this)">OpenAI</button>
+              <button class="guide-tab" onclick="switchGuide('anthropic', this)">Claude</button>
+              <button class="guide-tab" onclick="switchGuide('gemini', this)">Gemini</button>
+              <button class="guide-tab" onclick="switchGuide('deepseek', this)">DeepSeek</button>
+              <button class="guide-tab" onclick="switchGuide('mistral', this)">Mistral</button>
+            </div>
+            <div id="guide-openai" class="guide-panel active">
+              <ol class="guide-steps">
+                <li class="guide-step"><span class="step-num">1</span><span>Go to <strong>platform.openai.com</strong> → sign up free</span></li>
+                <li class="guide-step"><span class="step-num">2</span><span>Click your profile icon → <strong>API Keys</strong></span></li>
+                <li class="guide-step"><span class="step-num">3</span><span>Click <strong>+ Create new secret key</strong></span></li>
+                <li class="guide-step"><span class="step-num">4</span><span>Copy it — starts with <code style="color:var(--green)">sk-</code></span></li>
+                <li class="guide-step"><span class="step-num">5</span><span>Set a <strong>$5 spending limit</strong> in Billing (smart move)</span></li>
+              </ol>
+              <div class="guide-cost"><span class="arcade-tag green">FREE $5 CREDIT ON SIGNUP</span></div>
+            </div>
+            <div id="guide-anthropic" class="guide-panel">
+              <ol class="guide-steps">
+                <li class="guide-step"><span class="step-num">1</span><span>Go to <strong>console.anthropic.com</strong> → sign up</span></li>
+                <li class="guide-step"><span class="step-num">2</span><span>Click <strong>API Keys</strong> in the left sidebar</span></li>
+                <li class="guide-step"><span class="step-num">3</span><span>Click <strong>Create Key</strong> → give it a name</span></li>
+                <li class="guide-step"><span class="step-num">4</span><span>Copy it — starts with <code style="color:var(--green)">sk-ant-</code></span></li>
+                <li class="guide-step"><span class="step-num">5</span><span>Add credit under <strong>Billing → Add credit</strong></span></li>
+              </ol>
+              <div class="guide-cost"><span class="arcade-tag pink">NO FREE TIER — $5 CREDIT LASTS LONG</span></div>
+            </div>
+            <div id="guide-gemini" class="guide-panel">
+              <ol class="guide-steps">
+                <li class="guide-step"><span class="step-num">1</span><span>Go to <strong>aistudio.google.com</strong> → sign in with Google</span></li>
+                <li class="guide-step"><span class="step-num">2</span><span>Click <strong>Get API Key</strong> in the top left</span></li>
+                <li class="guide-step"><span class="step-num">3</span><span>Click <strong>Create API key in new project</strong></span></li>
+                <li class="guide-step"><span class="step-num">4</span><span>Copy it — starts with <code style="color:var(--green)">AIza</code></span></li>
+              </ol>
+              <div class="guide-cost"><span class="arcade-tag green">✨ FREE — NO CREDIT CARD NEEDED</span></div>
+            </div>
+            <div id="guide-deepseek" class="guide-panel">
+              <ol class="guide-steps">
+                <li class="guide-step"><span class="step-num">1</span><span>Go to <strong>platform.deepseek.com</strong> → sign up</span></li>
+                <li class="guide-step"><span class="step-num">2</span><span>Click <strong>API Keys</strong> in the left menu</span></li>
+                <li class="guide-step"><span class="step-num">3</span><span>Click <strong>Create API Key</strong></span></li>
+                <li class="guide-step"><span class="step-num">4</span><span>Copy it — starts with <code style="color:var(--green)">sk-</code></span></li>
+              </ol>
+              <div class="guide-cost"><span class="arcade-tag cyan">CHEAPEST — ~10× LESS THAN OPENAI</span></div>
+            </div>
+            <div id="guide-mistral" class="guide-panel">
+              <ol class="guide-steps">
+                <li class="guide-step"><span class="step-num">1</span><span>Go to <strong>console.mistral.ai</strong> → sign up</span></li>
+                <li class="guide-step"><span class="step-num">2</span><span>Click <strong>API Keys</strong> in the sidebar</span></li>
+                <li class="guide-step"><span class="step-num">3</span><span>Click <strong>Create new key</strong></span></li>
+                <li class="guide-step"><span class="step-num">4</span><span>Copy immediately — <strong>shown once only</strong></span></li>
+              </ol>
+              <div class="guide-cost"><span class="arcade-tag">FREE TRIAL CREDITS ON SIGNUP</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── GAMES GRID ────────────────────────────────────────────── -->
+<section class="games-section" id="games">
+  <div class="games-inner">
+    <div class="games-header">
+      <span class="label">9 GAMES AVAILABLE</span>
+      <h2>Choose your arena</h2>
+    </div>
+    <div class="games-grid" id="games-grid">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ──────────────────────────────────────────── -->
+<section class="how-section">
+  <div class="how-header">
+    <span class="label">SIMPLE BY DESIGN</span>
+    <h2>How it works</h2>
+  </div>
+  <div class="how-steps">
+    <div class="how-step">
+      <div class="how-step-num">01</div>
+      <div class="how-step-title">Get an API key</div>
+      <div class="how-step-desc">Sign up with any AI provider. Gemini is free with no credit card needed.</div>
+    </div>
+    <div class="how-step">
+      <div class="how-step-num">02</div>
+      <div class="how-step-title">Paste it in</div>
+      <div class="how-step-desc">Enter your key above. It goes into sessionStorage — gone when you close the tab.</div>
+    </div>
+    <div class="how-step">
+      <div class="how-step-num">03</div>
+      <div class="how-step-title">Pick a game</div>
+      <div class="how-step-desc">Choose from 6 games. Each one pits models against each other in a different way.</div>
+    </div>
+    <div class="how-step">
+      <div class="how-step-num">04</div>
+      <div class="how-step-title">Play &amp; share</div>
+      <div class="how-step-desc">Watch models stream responses live. Vote for the winner. Share the result on X.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHY FREE ──────────────────────────────────────────────── -->
+<section class="why-section">
+  <div class="why-inner">
+    <div class="why-left">
+      <span class="label">ZERO MAINTENANCE</span>
+      <h2>Built to run forever</h2>
+      <p>
+        There's no backend to maintain, no database to migrate, no server bill to pay.
+        This is a folder of HTML files deployed to Netlify's CDN.
+        It will work exactly the same in 10 years as it does today.
+        Your API key goes directly to the provider — we are not in the loop.
+      </p>
+    </div>
+    <div class="why-cards">
+      <div class="why-card">
+        <div class="why-card-icon">✓</div>
+        <div>
+          <div class="why-card-title">Zero servers</div>
+          <div class="why-card-sub">Pure HTML, CSS, and JS. Served from a CDN edge node near you.</div>
+        </div>
+      </div>
+      <div class="why-card">
+        <div class="why-card-icon">✓</div>
+        <div>
+          <div class="why-card-title">Your key never leaves your browser</div>
+          <div class="why-card-sub">sessionStorage only. No cookies, no analytics, no tracking.</div>
+        </div>
+      </div>
+      <div class="why-card">
+        <div class="why-card-icon">✓</div>
+        <div>
+          <div class="why-card-title">Direct to the provider</div>
+          <div class="why-card-sub">fetch() straight to api.openai.com, api.anthropic.com, etc.</div>
+        </div>
+      </div>
+      <div class="why-card">
+        <div class="why-card-icon">⚡</div>
+        <div>
+          <div class="why-card-title">Direct to providers</div>
+          <div class="why-card-sub">Your API key goes straight to OpenAI, Anthropic, Google. No middleman.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── COST BENTO ────────────────────────────────────────────── -->
+<section class="cost-section">
+  <div style="margin-bottom:1.5rem">
+    <span class="label">PRICING</span>
+    <h2 style="font-family:var(--display);font-size:2rem;letter-spacing:-0.03em">What does it actually cost?</h2>
+  </div>
+  <div class="cost-grid">
+    <div class="cost-card">
+      <div class="cost-card-label">Per-game API cost (OpenAI)</div>
+      <table class="cost-table">
+        <tr><td>Model Roast (3 rounds)</td><td>~$0.004</td></tr>
+        <tr><td>Guess the Model (5 answers)</td><td>~$0.008</td></tr>
+        <tr><td>Haiku Battle (4 models)</td><td>~$0.003</td></tr>
+        <tr><td>Roast Me (3 models)</td><td>~$0.005</td></tr>
+        <tr><td>Full session, all 6 games</td><td>~$0.03</td></tr>
+      </table>
+    </div>
+    <div class="cost-card" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div>
+        <div class="cost-card-label">Our server costs</div>
+        <h3>$0</h3>
+      </div>
+      <div>
+        <div class="cost-card-label">Models supported</div>
+        <h3 style="color:var(--cyan)">5</h3>
+      </div>
+      <div style="grid-column:1/-1">
+        <div class="cost-card-label">Cheapest option</div>
+        <div style="font-size:12px;color:var(--muted)">Gemini Flash is <strong style="color:var(--green)">free</strong> — no credit card, no limits on basic usage.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────────────────────── -->
+<section class="cta-section">
+  <h2 class="cta-h2">Ready to play?<br>Insert your coin.</h2>
+  <p class="cta-sub">It takes 30 seconds. No account needed.</p>
+  <div class="cta-btns">
+    <a
+      class="arcade-btn-primary"
+      href="#key-entry"
+      onclick="event.preventDefault();document.getElementById('key-entry').scrollIntoView({behavior:'smooth'})"
+    >▶ GET STARTED FREE</a>
+    <a
+      class="arcade-btn-ghost"
+      href="https://github.com/chinmayPatil10/plugai"
+      target="_blank"
+    >VIEW SOURCE ↗</a>
+  </div>
+  <p class="cta-fine">
+    <span>NO ACCOUNT</span><span>·</span>
+    <span>NO BILLING</span><span>·</span>
+    <span>NO DATA COLLECTED</span><span>·</span>
+    <span>OPEN SOURCE</span>
+  </p>
+</section>
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-logo">
+    <span class="plug">AI</span><span class="ai">Leela</span>
+    <span style="font-size:10px;color:var(--muted);margin-left:6px;letter-spacing:0.12em">where AI comes to play</span>
+  </div>
+  <div class="footer-links">
+    <a href="#games" onclick="event.preventDefault();document.getElementById('games').scrollIntoView({behavior:'smooth'})">Games</a>
+    <a href="#key-entry" onclick="event.preventDefault();document.getElementById('key-entry').scrollIntoView({behavior:'smooth'})">Get Started</a>
+  </div>
+  <div class="footer-mit">MIT LICENSE</div>
+</footer>
+
+<!-- Scripts -->
+<script src="js/key-manager.js"></script>
+<script src="js/ai-client.js"></script>
+<script src="js/nav.js"></script>
+<script>
+
+/* ── GAMES DATA ─────────────────────────────────────────────── */
+const GAMES = [
+  {
+    id: 'model-roast',
+    num: '01',
+    name: 'Model Roast',
+    emoji: '🔥',
+    mode: 'vs',           // 2 fighters head-to-head
+    tag: 'Two models debate a topic across 3 rounds. You vote the winner.',
+    diff: 'EASY', diffColor: 'green',
+    artBg: 'linear-gradient(135deg, #1a0505 0%, #2d0a0a 100%)',
+    models: ['GPT-4o', 'Claude', 'Gemini'],
+    href: 'games/model-roast.html',
+  },
+  {
+    id: 'guess-the-model',
+    num: '02',
+    name: 'Guess the Model',
+    emoji: '🕵️',
+    mode: 'arena',        // N models, choose which ones
+    tag: 'All models answer blindly. Guess which response belongs to which AI.',
+    diff: 'EASY', diffColor: 'green',
+    artBg: 'linear-gradient(135deg, #050d1a 0%, #0a1a2d 100%)',
+    models: ['GPT-4o', 'Claude', 'Gemini', 'DeepSeek'],
+    href: 'games/guess-the-model.html',
+  },
+  {
+    id: 'roast-me',
+    num: '03',
+    name: 'Roast Me',
+    emoji: '😈',
+    mode: 'arena',
+    tag: 'Describe yourself and let every AI roast you in 3 sentences.',
+    diff: 'EASY', diffColor: 'green',
+    artBg: 'linear-gradient(135deg, #0d0519 0%, #190a2d 100%)',
+    models: ['GPT-4o', 'Claude', 'Gemini'],
+    href: 'games/roast-me.html',
+  },
+  {
+    id: 'haiku-battle',
+    num: '04',
+    name: 'Haiku Battle',
+    emoji: '🎋',
+    mode: 'arena',
+    tag: 'Every model writes a haiku on the same topic. Vote the best.',
+    diff: 'EASY', diffColor: 'green',
+    artBg: 'linear-gradient(135deg, #04150d 0%, #09261a 100%)',
+    models: ['GPT-4o', 'Claude', 'Gemini', 'Mistral'],
+    href: 'games/haiku-battle.html',
+  },
+  {
+    id: 'explain-it-as',
+    num: '05',
+    name: 'Explain It As...',
+    emoji: '🎭',
+    mode: 'arena',
+    tag: 'Pick a topic and a character voice. Which model commits hardest?',
+    diff: 'MEDIUM', diffColor: '',
+    artBg: 'linear-gradient(135deg, #150a04 0%, #261509 100%)',
+    models: ['GPT-4o', 'Claude', 'DeepSeek'],
+    href: 'games/explain-it-as.html',
+  },
+  {
+    id: 'hot-take',
+    num: '06',
+    name: 'Hot Take',
+    emoji: '💣',
+    mode: 'arena',
+    tag: 'Each model drops its most unhinged unpopular opinion. Vote the spiciest.',
+    diff: 'EASY', diffColor: 'green',
+    artBg: 'linear-gradient(135deg, #14130a 0%, #252309 100%)',
+    models: ['GPT-4o', 'Claude', 'Gemini'],
+    href: 'games/hot-take.html',
+  },
+  {
+    id: 'therapists',
+    num: '07',
+    name: 'The Therapists',
+    emoji: '🛋️',
+    mode: 'persona',
+    tag: 'Share what\'s on your mind. Five very different perspectives respond at once.',
+    diff: 'EASY', diffColor: 'green',
+    artBg: 'linear-gradient(135deg, #050a14 0%, #0a1428 100%)',
+    models: ['CBT', 'Stoic', 'Hype Man', 'Brutal', 'Freudian'],
+    href: 'games/therapists.html',
+  },
+  {
+    id: 'advisors',
+    num: '08',
+    name: 'The Advisors',
+    emoji: '💼',
+    mode: 'persona',
+    tag: 'Ask a life or business question. Four very different advisors respond at once.',
+    diff: 'EASY', diffColor: 'green',
+    artBg: 'linear-gradient(135deg, #0a0a05 0%, #1a1a09 100%)',
+    models: ['Buffett', 'Naval', 'Your Dad', 'Fortune Cookie'],
+    href: 'games/advisors.html',
+  },
+  {
+    id: 'writers-room',
+    num: '09',
+    name: 'The Writers Room',
+    emoji: '✍️',
+    mode: 'persona',
+    tag: 'Give a scene or premise. Four literary legends write the opening paragraph.',
+    diff: 'MEDIUM', diffColor: '',
+    artBg: 'linear-gradient(135deg, #0a0514 0%, #150a28 100%)',
+    models: ['Hemingway', 'Austen', 'Hunter S. Thompson', 'Attenborough'],
+    href: 'games/writers-room.html',
+  },
+];
+
+function renderGames() {
+  const grid = document.getElementById('games-grid');
+  grid.innerHTML = GAMES.map(g => `
+    <a class="game-card" href="${g.href}" onclick="return routeGame(event, '${g.href}')">
+      <div class="game-art" style="background:${g.artBg}">
+        <span>${g.emoji}</span>
+        <span class="game-art-num">${g.num}</span>
+      </div>
+      <div class="game-card-body">
+        <span class="game-mode-badge game-mode-${g.mode}">
+          ${g.mode === 'vs' ? '⚔ VS MODE · 2 fighters' : g.mode === 'persona' ? '🎭 PERSONA MODE' : '⚡ ARENA · N models'}
+        </span>
+        <div class="game-card-name">${g.name}</div>
+        <div class="game-card-tag">${g.tag}</div>
+        <div class="game-card-models">
+          ${g.models.map(m => `<span class="game-card-model-pill">${m}</span>`).join('')}
+        </div>
+      </div>
+      <div class="game-card-footer">
+        <span class="label">${g.id}</span>
+        <span class="game-card-play">PLAY ▶</span>
+      </div>
+    </a>
+  `).join('');
+}
+
+function routeGame(e, href) {
+  const guard = KeyManager.guardPage();
+  if (guard === 'wall') {
+    e.preventDefault();
+    // Highlight TRY FREE tab and scroll to key entry
+    document.getElementById('key-entry').scrollIntoView({ behavior: 'smooth' });
+    switchKeyTab('free');
+    return false;
+  }
+  // free or hasKey — allow navigation
+  return true;
+}
+
+/* ── KEY VAULT ───────────────────────────────────────────────── */
+const PROVIDER_LABELS = {
+  openai:    { label: 'OpenAI',    hint: 'sk-...  (OpenAI platform key)',           url: 'https://platform.openai.com/api-keys' },
+  anthropic: { label: 'Claude',    hint: 'sk-ant-...  (Anthropic console key)',     url: 'https://console.anthropic.com/settings/keys' },
+  gemini:    { label: 'Gemini',    hint: 'AIza...  (Google AI Studio key — free!)', url: 'https://aistudio.google.com/app/apikey' },
+  deepseek:  { label: 'DeepSeek',  hint: 'sk-...  (DeepSeek platform key)',         url: 'https://platform.deepseek.com/api_keys' },
+  mistral:   { label: 'Mistral',   hint: '32-char key  (Mistral console)',          url: 'https://console.mistral.ai/api-keys' },
+};
+
+function renderKeyVault() {
+  const el = document.getElementById('key-vault');
+  if (!el) return;
+
+  const rows = KeyManager.PROVIDERS.map(p => {
+    const key    = KeyManager.get(p);
+    const active = !!(key && key.length > 4);
+    const meta   = PROVIDER_LABELS[p];
+    return `
+      <tr class="vault-row" id="vault-row-${p}">
+        <td style="width:1rem">
+          <span class="vault-dot${active ? ' active' : ''}"></span>
+        </td>
+        <td class="vault-provider">${meta.label}</td>
+        <td>
+          ${active
+            ? `<span class="vault-key-mask">${KeyManager.mask(key)}</span>`
+            : `<span class="vault-key-empty">— not added —</span>`
+          }
+        </td>
+        <td style="text-align:right">
+          ${active
+            ? `<button class="vault-action-btn remove" onclick="vaultRemove('${p}')">✕ remove</button>`
+            : `<button class="vault-action-btn" onclick="vaultOpenAdd('${p}')">+ Add</button>`
+          }
+        </td>
+      </tr>
+      <tr id="vault-add-row-${p}" style="display:none">
+        <td colspan="4" style="padding:0 0 0.5rem 1.5rem">
+          <div class="vault-inline-add open" id="vault-inline-${p}">
+            <div class="vault-inline-row">
+              <input type="password" class="arcade-input" id="vault-input-${p}"
+                placeholder="${meta.hint}" autocomplete="off"
+                oninput="vaultOnInput('${p}', this.value)"
+                onkeydown="if(event.key==='Enter') vaultSave('${p}')">
+              <button class="vault-action-btn" style="border-color:var(--accent);color:var(--accent)" onclick="vaultSave('${p}')">SAVE</button>
+              <button class="vault-action-btn" onclick="vaultCloseAdd('${p}')">cancel</button>
+            </div>
+            <div class="vault-inline-hint" id="vault-hint-${p}">
+              <a href="${meta.url}" target="_blank" style="color:var(--accent);opacity:0.7">${meta.url.replace('https://','')}</a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="vault-header">
+      <span class="vault-label">YOUR API KEYS</span>
+      <button class="vault-add-btn" onclick="vaultOpenAdd()">+ ADD KEY</button>
+    </div>
+    <table class="vault-table"><tbody>${rows}</tbody></table>
+    <div style="font-size:10px;color:var(--dim);margin-top:0.75rem;line-height:1.6">
+      Keys in sessionStorage only — erased when you close this tab.<br>
+      Gemini has a free tier — <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent);opacity:0.7">get one in 30 seconds →</a>
+    </div>
+  `;
+}
+
+function vaultOpenAdd(provider) {
+  // If no specific provider, open the first missing one
+  if (!provider) {
+    provider = KeyManager.PROVIDERS.find(p => !KeyManager.hasKey(p));
+    if (!provider) return;
+  }
+  // Close all other open add rows
+  KeyManager.PROVIDERS.forEach(p => {
+    const row = document.getElementById(`vault-add-row-${p}`);
+    if (row) row.style.display = 'none';
+  });
+  const row = document.getElementById(`vault-add-row-${provider}`);
+  if (row) {
+    row.style.display = 'table-row';
+    setTimeout(() => {
+      const inp = document.getElementById(`vault-input-${provider}`);
+      if (inp) inp.focus();
+    }, 50);
+  }
+}
+
+function vaultCloseAdd(provider) {
+  const row = document.getElementById(`vault-add-row-${provider}`);
+  if (row) row.style.display = 'none';
+  const inp = document.getElementById(`vault-input-${provider}`);
+  if (inp) inp.value = '';
+  const hint = document.getElementById(`vault-hint-${provider}`);
+  if (hint) {
+    const meta = PROVIDER_LABELS[provider];
+    hint.innerHTML = `<a href="${meta.url}" target="_blank" style="color:var(--accent);opacity:0.7">${meta.url.replace('https://','')}</a>`;
+  }
+}
+
+function vaultOnInput(provider, val) {
+  const hint = document.getElementById(`vault-hint-${provider}`);
+  if (!hint) return;
+  if (val.trim().length > 8) {
+    const detected = KeyManager.detect(val.trim());
+    if (detected && detected !== provider) {
+      hint.innerHTML = `<span style="color:var(--pink)">⚠ Looks like a ${PROVIDER_LABELS[detected].label} key — save anyway?</span>`;
+    } else if (detected === provider) {
+      hint.innerHTML = `<span style="color:var(--green)">✓ Format looks good</span>`;
+    } else {
+      hint.innerHTML = `<span style="color:var(--muted)">Format unrecognised — saving as ${PROVIDER_LABELS[provider].label}</span>`;
+    }
+  } else {
+    const meta = PROVIDER_LABELS[provider];
+    hint.innerHTML = `<a href="${meta.url}" target="_blank" style="color:var(--accent);opacity:0.7">${meta.url.replace('https://','')}</a>`;
+  }
+}
+
+function vaultSave(provider) {
+  const inp = document.getElementById(`vault-input-${provider}`);
+  if (!inp) return;
+  const key = inp.value.trim();
+  if (!key || key.length < 8) {
+    inp.style.borderColor = 'var(--pink)';
+    setTimeout(() => inp.style.borderColor = '', 1500);
+    return;
+  }
+  KeyManager.save(provider, key);
+  // Flash success then re-render
+  const hint = document.getElementById(`vault-hint-${provider}`);
+  if (hint) hint.innerHTML = `<span class="vault-success-flash">✓ ${PROVIDER_LABELS[provider].label} key saved</span>`;
+  setTimeout(() => {
+    renderKeyVault();
+    renderGames();
+    if (typeof Nav !== 'undefined') Nav.inject();
+  }, 600);
+}
+
+function vaultRemove(provider) {
+  KeyManager.remove(provider);
+  renderKeyVault();
+  renderGames();
+  if (typeof Nav !== 'undefined') Nav.inject();
+}
+
+/* ── FREE TAB RENDERER ───────────────────────────────────────── */
+function renderFreeTab() {
+  const el = document.getElementById('tab-free-content');
+  if (!el) return;
+
+  if (KeyManager.isFreeUsed()) {
+    // QUOTA EXHAUSTED STATE
+    el.innerHTML = `
+      <div style="text-align:center;padding:0.5rem 0 0.75rem">
+        <div style="font-size:1.5rem;margin-bottom:0.5rem">🔴</div>
+        <div style="font-family:var(--display);font-size:1.1rem;letter-spacing:-0.02em;margin-bottom:0.4rem">
+          Free round used
+        </div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:1.25rem">
+          You've played your free round this session.<br>
+          Enter an API key to unlock unlimited play + premium models.
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;margin-bottom:1rem">
+          <span class="arcade-tag" style="background:rgba(64,232,144,0.08);border-color:rgba(64,232,144,0.2);color:var(--green);opacity:0.4">GPT (free) ✓ used</span>
+          <span class="arcade-tag pink" style="opacity:0.4">Mistral (free) ✓ used</span>
+          <span class="arcade-tag cyan" style="opacity:0.4">Llama (free) ✓ used</span>
+        </div>
+        <button class="key-play-btn" onclick="switchKeyTab('mykey')"
+          style="border-color:var(--accent);color:var(--accent)">
+          🔑 ADD YOUR KEY →
+        </button>
+        <div style="font-size:10px;color:var(--muted);margin-top:0.75rem;line-height:1.7">
+          Gemini API is free · <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent)">get one in 30 seconds →</a>
+        </div>
+      </div>
+    `;
+  } else {
+    // NORMAL FREE STATE
+    el.innerHTML = `
+      <div style="font-size:13px;color:var(--muted);margin-bottom:1rem;line-height:1.6">
+        Play one free round powered by open-source AI. No account, no credit card.
+      </div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+        <span class="arcade-tag" style="background:rgba(64,232,144,0.1);border-color:rgba(64,232,144,0.3);color:var(--green)">GPT <span style="opacity:0.6;font-weight:400">(free)</span></span>
+        <span class="arcade-tag pink">Mistral <span style="opacity:0.6;font-weight:400">(free)</span></span>
+        <span class="arcade-tag cyan">Llama <span style="opacity:0.6;font-weight:400">(free)</span></span>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:0.75rem;letter-spacing:0.06em">
+        powered by <a href="https://pollinations.ai" target="_blank" style="color:var(--accent);opacity:0.7">pollinations.ai</a> · no account · no rate limit for 1 round
+      </div>
+      <button class="key-play-btn" onclick="startFreePlayBtn()" style="border-color:var(--pink);color:var(--pink)">
+        ⚡ START FREE GAME →
+      </button>
+      <div style="font-size:10px;color:var(--muted);margin-top:0.6rem;letter-spacing:0.08em;text-transform:uppercase">
+        1 FREE ROUND PER SESSION · ENTER YOUR KEY FOR UNLIMITED PLAY
+      </div>
+    `;
+  }
+}
+
+/* ── TAB SWITCHING ───────────────────────────────────────────── */
+function switchKeyTab(tab) {
+  const tabFree   = document.getElementById('tab-free');
+  const tabMykey  = document.getElementById('tab-mykey');
+  const contFree  = document.getElementById('tab-free-content');
+  const contMykey = document.getElementById('tab-mykey-content');
+
+  if (tab === 'free') {
+    tabFree.classList.add('active');
+    tabMykey.classList.remove('active');
+    contFree.style.display  = 'block';
+    contMykey.style.display = 'none';
+    renderFreeTab();
+  } else {
+    tabMykey.classList.add('active');
+    tabFree.classList.remove('active');
+    contMykey.style.display = 'block';
+    contFree.style.display  = 'none';
+    renderKeyVault();
+  }
+}
+
+/* ── FREE PLAY ───────────────────────────────────────────────── */
+function startFreePlay(e) {
+  // Called from the TRY FREE → banner link
+  if (KeyManager.isFreeUsed()) {
+    // Already used — redirect to MY KEY tab
+    e.preventDefault();
+    document.getElementById('key-entry').scrollIntoView({ behavior: 'smooth' });
+    switchKeyTab('mykey');
+    return false;
+  }
+  // Allow the href navigation (goes to model-roast.html)
+  return true;
+}
+
+function startFreePlayBtn() {
+  // Called from ⚡ START FREE GAME button inside TRY FREE tab
+  if (KeyManager.isFreeUsed()) {
+    switchKeyTab('mykey');
+    return;
+  }
+  window.location.href = 'games/model-roast.html';
+}
+
+// Init on load
+window.addEventListener('load', () => {
+  renderFreeTab();
+
+  if (KeyManager.hasAnyKey()) {
+    switchKeyTab('mykey'); // shows vault
+    const banner = document.getElementById('try-free-banner');
+    if (banner) banner.style.display = 'none';
+  } else if (KeyManager.isFreeUsed()) {
+    switchKeyTab('free');
+  } else {
+    renderFreeTab();
+  }
+  renderGames();
+});
+
+/* ── ACCORDIONS ─────────────────────────────────────────────── */
+function toggleAcc(id, btn) {
+  const body = document.getElementById(`acc-${id}`);
+  const isOpen = body.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
+
+  // Lazy-init Three.js when safety accordion opens
+  if (id === 'safety' && isOpen && !window._threeInit) {
+    initThreeJS();
+  }
+}
+
+/* ── KEY GUIDE TABS ─────────────────────────────────────────── */
+function switchGuide(provider, tab) {
+  document.querySelectorAll('.guide-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.guide-panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById(`guide-${provider}`).classList.add('active');
+}
+
+/* ── THREE.JS CHARACTER ─────────────────────────────────────── */
+function initThreeJS() {
+  window._threeInit = true;
+  const wrap = document.getElementById('threejs-wrap');
+  const canvas = document.getElementById('threejs-canvas');
+  wrap.style.display = 'block';
+
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  script.onload = () => startThreeScene(canvas);
+  document.head.appendChild(script);
+}
+
+function startThreeScene(canvas) {
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
+  camera.position.set(0, 1.2, 5);
+  camera.lookAt(0, 0.8, 0);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+  dir.position.set(3, 5, 3);
+  scene.add(dir);
+
+  // Colors
+  const Y = 0xf0e040, P = 0xe8308a, G = 0x40e890, D = 0x2a2a35;
+
+  const box = (w, h, d, color) => {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshLambertMaterial({ color })
+    );
+    return m;
+  };
+
+  // ── CHARACTER ────────────────────────────────────────────
+  const char = new THREE.Group();
+
+  const body = box(0.5, 0.7, 0.3, Y);
+  body.position.y = 0.35;
+  char.add(body);
+
+  const head = box(0.35, 0.35, 0.3, Y);
+  head.position.y = 0.9;
+  char.add(head);
+
+  // eyes
+  const eyeL = box(0.06, 0.06, 0.05, D);
+  eyeL.position.set(-0.08, 0.93, 0.165);
+  char.add(eyeL);
+  const eyeR = box(0.06, 0.06, 0.05, D);
+  eyeR.position.set(0.08, 0.93, 0.165);
+  char.add(eyeR);
+
+  const legL = box(0.18, 0.5, 0.18, P);
+  legL.position.set(-0.15, -0.25, 0);
+  char.add(legL);
+  const legR = box(0.18, 0.5, 0.18, P);
+  legR.position.set(0.15, -0.25, 0);
+  char.add(legR);
+
+  const armL = box(0.14, 0.45, 0.14, Y);
+  armL.position.set(-0.33, 0.25, 0);
+  char.add(armL);
+  const armR = box(0.14, 0.45, 0.14, Y);
+  armR.position.set(0.33, 0.25, 0);
+  char.add(armR);
+
+  char.position.set(-5, 0.5, 0);
+  scene.add(char);
+
+  // ── DESK ─────────────────────────────────────────────────
+  const desk = box(1.8, 0.08, 0.7, 0x3a3850);
+  desk.position.set(0.5, 0.9, 0);
+  scene.add(desk);
+
+  // desk legs
+  [-0.8, 0.8].forEach(x => {
+    const leg = box(0.06, 0.9, 0.06, 0x2a2835);
+    leg.position.set(x + 0.5, 0.45, 0.3);
+    scene.add(leg);
+    const leg2 = leg.clone();
+    leg2.position.z = -0.3;
+    scene.add(leg2);
+  });
+
+  // ── CHAIR ────────────────────────────────────────────────
+  const chairSeat = box(0.55, 0.06, 0.55, 0x2a2835);
+  chairSeat.position.set(0, 0.55, 0.4);
+  scene.add(chairSeat);
+  const chairBack = box(0.55, 0.6, 0.06, 0x2a2835);
+  chairBack.position.set(0, 0.85, 0.65);
+  scene.add(chairBack);
+
+  // ── MONITOR ──────────────────────────────────────────────
+  const monitor = box(0.8, 0.55, 0.05, D);
+  monitor.position.set(0.5, 1.35, -0.05);
+  scene.add(monitor);
+  const screen = box(0.72, 0.47, 0.02, G);
+  screen.position.set(0.5, 1.35, -0.02);
+  scene.add(screen);
+  // glow effect via emissive
+  screen.material.emissive = new THREE.Color(G);
+  screen.material.emissiveIntensity = 0.4;
+
+  // monitor stand
+  const stand = box(0.05, 0.3, 0.05, D);
+  stand.position.set(0.5, 0.97, -0.05);
+  scene.add(stand);
+
+  // ── ANIMATION STATE ──────────────────────────────────────
+  let phase = 'walk'; // walk → sit → think
+  let t = 0;
+  const bubbles = ["hmm...", "let me think...", "your key is safe!", "direct to provider →", "no middleman!"];
+  let bubbleIdx = 0;
+  let bubbleTimer = 0;
+  const bubbleEl = document.getElementById('speech-bubble');
+
+  function showBubble(text) {
+    bubbleEl.style.opacity = '0';
+    setTimeout(() => { bubbleEl.textContent = text; bubbleEl.style.opacity = '1'; }, 200);
+    setTimeout(() => { bubbleEl.style.opacity = '0'; }, 1600);
+  }
+
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+    t += dt;
+    bubbleTimer += dt;
+
+    if (phase === 'walk') {
+      // Slide in from x=-5 to x=0
+      char.position.x = Math.min(0, char.position.x + dt * 3);
+      // leg swing
+      legL.rotation.x = Math.sin(t * 8) * 0.4;
+      legR.rotation.x = -Math.sin(t * 8) * 0.4;
+      armL.rotation.x = -Math.sin(t * 8) * 0.35;
+      armR.rotation.x = Math.sin(t * 8) * 0.35;
+
+      if (char.position.x >= 0) {
+        phase = 'sit';
+        t = 0;
+      }
+    } else if (phase === 'sit') {
+      // Lower onto chair over 0.8s
+      const progress = Math.min(1, t / 0.8);
+      char.position.y = 0.5 + (1 - progress) * 0.3;
+      // Bend legs
+      legL.rotation.x = progress * 0.8;
+      legR.rotation.x = progress * 0.8;
+      armL.rotation.x = 0;
+      armR.rotation.x = 0;
+
+      if (progress >= 1) {
+        phase = 'think';
+        t = 0;
+        setTimeout(() => showBubble(bubbles[bubbleIdx]), 400);
+      }
+    } else if (phase === 'think') {
+      // Gentle head bob
+      head.rotation.z = Math.sin(t * 0.8) * 0.06;
+      // Arms move slightly toward desk
+      armL.rotation.x = -0.5 + Math.sin(t * 0.7) * 0.1;
+      armR.rotation.x = -0.5 + Math.sin(t * 0.7 + 1) * 0.1;
+      // Screen flicker
+      screen.material.emissiveIntensity = 0.3 + Math.sin(t * 3) * 0.1;
+
+      if (bubbleTimer > 1.9) {
+        bubbleTimer = 0;
+        bubbleIdx = (bubbleIdx + 1) % bubbles.length;
+        showBubble(bubbles[bubbleIdx]);
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explain It As... 🎭 AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    .explain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1px; background: var(--dim);
+    }
+    .explain-panel {
+      background: var(--bg2); display: flex; flex-direction: column; min-height: 200px;
+      transition: all 0.15s; position: relative;
+    }
+    .explain-panel.vote-mode { cursor: crosshair; }
+    .explain-panel.vote-mode:hover { background: var(--bg3); }
+    .explain-panel.winner {
+      border: 1px solid var(--accent); background: rgba(240,224,64,0.04);
+    }
+    .explain-panel .vote-overlay {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: var(--accent);
+      opacity: 0; transition: opacity 0.15s; text-transform: uppercase;
+      background: rgba(240,224,64,0.06);
+    }
+    .explain-panel.vote-mode:hover .vote-overlay { opacity: 1; }
+
+    .character-badge {
+      background: rgba(232,48,138,0.12); border: 1px solid rgba(232,48,138,0.3);
+      color: var(--pink); font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+    .selector-note { font-size: 11px; color: var(--muted); margin-top: 0.5rem; min-height: 16px; }
+  </style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div id="no-key-overlay" class="no-key-overlay">
+  <div class="no-key-card">
+    <h2>FREE ROUND USED</h2>
+    <p>You've used your free round. Enter an API key to keep playing — Gemini is completely free!</p>
+    <a class="arcade-btn-primary" href="../index.html#key-entry">← GET A KEY</a>
+    <a class="arcade-btn-ghost" href="../index.html" style="margin-top:0.5rem">← BACK TO LOBBY</a>
+  </div>
+</div>
+
+<div class="game-page-wrap">
+
+  <!-- SETUP -->
+  <div id="setup" class="game-setup-card">
+    <div class="game-title">🎭 EXPLAIN IT AS...</div>
+    <div class="game-tagline">Pick a topic and a character voice. Which model commits hardest to the bit?</div>
+
+    <div class="two-col">
+      <div class="form-group">
+        <label class="form-label">EXPLAIN THIS TOPIC</label>
+        <div class="preset-chips" id="topic-chips" style="margin-bottom:0.5rem"></div>
+        <input type="text" id="topic-input" class="arcade-input"
+          placeholder="...or type your own" maxlength="80"
+          oninput="topic = this.value.trim(); checkReady()">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">AS IF YOU WERE...</label>
+        <select id="character-select" class="arcade-select" style="width:100%" onchange="character=this.value;checkReady()">
+          <option value="">— Pick a character —</option>
+          <option value="a 5-year-old">A 5-year-old</option>
+          <option value="a pirate">A pirate</option>
+          <option value="Shakespeare">Shakespeare</option>
+          <option value="a Gen Z teenager">A Gen Z teenager</option>
+          <option value="a 1950s newsreader">A 1950s newsreader</option>
+          <option value="a sports commentator">A sports commentator</option>
+          <option value="a conspiracy theorist">A conspiracy theorist</option>
+          <option value="Gordon Ramsay">Gordon Ramsay</option>
+          <option value="an overly enthusiastic infomercial host">An infomercial host</option>
+          <option value="a tired dad">A tired dad</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">SELECT MODELS (pick at least 2)</label>
+      <div id="model-selector"></div>
+      <div class="selector-note" id="selector-note"></div>
+    </div>
+
+    <button id="btn-start" class="arcade-btn-primary" style="width:100%;padding:0.85rem" disabled onclick="startGame()">
+      PICK A TOPIC AND CHARACTER
+    </button>
+  </div>
+
+  <!-- GAME AREA -->
+  <div id="game-area" style="display:none">
+    <div style="background:var(--bg3);border:1px solid var(--dim);padding:0.75rem 1rem;margin-bottom:1px;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem">
+      <div class="label" style="margin:0">EXPLAINING</div>
+      <div style="font-family:var(--display);font-size:0.95rem" id="topic-display">—</div>
+      <div style="color:var(--muted);font-size:12px">as...</div>
+      <div class="character-badge" id="char-display">—</div>
+    </div>
+
+    <div class="explain-grid" id="explain-grid"></div>
+
+    <div class="vote-section" id="vote-section" style="margin-top:1px">
+      <div class="vote-title">Which model committed hardest? 🎭</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:0.5rem">Click on a panel to vote</div>
+    </div>
+  </div>
+</div>
+
+<div id="error-toast"></div>
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/share-card.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.inject('game');
+
+const _guard = KeyManager.guardPage();
+if (_guard === 'wall') document.getElementById('no-key-overlay').classList.add('visible');
+
+const TOPIC_PRESETS = [
+  'Quantum physics','The internet','Love','Taxes',
+  'The stock market','Death','Democracy','Black holes',
+];
+
+let topic = '', character = '';
+let voted = false;
+let panelData = [];
+
+// Topic chips
+const chipWrap = document.getElementById('topic-chips');
+TOPIC_PRESETS.forEach(p => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-chip';
+  btn.textContent = p;
+  btn.onclick = () => {
+    document.querySelectorAll('.preset-chip').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('topic-input').value = p;
+    topic = p; checkReady();
+  };
+  chipWrap.appendChild(btn);
+});
+
+// Model selector
+const selector = buildSelector(document.getElementById('model-selector'), {
+  min: 2, max: 5, onChange: () => {
+    document.getElementById('selector-note').textContent = selector.getNote();
+    checkReady();
+  }
+});
+document.getElementById('selector-note').textContent = selector.getNote();
+
+function checkReady() {
+  const btn = document.getElementById('btn-start');
+  if (topic && character && selector.isValid()) {
+    btn.disabled = false;
+    btn.textContent = `🎭 EXPLAIN IT AS ${character.toUpperCase()}`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = !topic ? 'PICK A TOPIC FIRST' : !character ? 'PICK A CHARACTER' : 'SELECT AT LEAST 2 MODELS';
+  }
+}
+
+function startGame() {
+  const models = selector.getModels();
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game-area').style.display = 'block';
+  document.getElementById('topic-display').textContent = topic;
+  document.getElementById('char-display').textContent = character;
+
+  const eGrid = document.getElementById('explain-grid');
+  eGrid.innerHTML = '';
+  panelData = [];
+
+  models.forEach(modelSpec => {
+    const safeId = modelSpec.modelId.replace(/[^a-z0-9]/g, '-');
+    const panel = document.createElement('div');
+    panel.className = 'explain-panel';
+    panel.innerHTML = `
+      <div class="vote-overlay">CLICK TO VOTE ▶</div>
+      <div class="panel-header">
+        <span class="panel-model-label" style="color:${getModelColor(modelSpec.provider || modelSpec.modelId)}">${modelSpec.display}</span>
+        <span class="arcade-tag" id="etag-${safeId}">CHANNELING...</span>
+      </div>
+      <div class="panel-body panel-content" id="ebody-${safeId}">
+        <div class="panel-thinking"><span>getting into character</span><span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
+      </div>
+    `;
+    eGrid.appendChild(panel);
+    panelData.push({ modelSpec, el: panel, bodyEl: panel.querySelector(`#ebody-${safeId}`), safeId });
+  });
+
+  runGame();
+}
+
+async function runGame() {
+  const prompt = `Explain "${topic}" as if you are ${character}. Stay fully in character throughout. Keep it to 4-5 sentences. Be funny and committed to the bit. Do not break character or say you are an AI.${NO_META}`;
+
+  let doneCount = 0;
+  const total = panelData.length;
+
+  await Promise.allSettled(panelData.map(({ modelSpec, el, bodyEl, safeId }) => {
+    el.classList.add('streaming');
+    return streamToPanel(modelSpec, [{ role:'user', content: prompt }], bodyEl, el)
+      .then(() => {
+        const tag = document.getElementById(`etag-${safeId}`);
+        if (tag) { tag.textContent = 'DONE'; tag.className = 'arcade-tag green'; }
+        doneCount++;
+        if (doneCount === total) enableVoting();
+      });
+  }));
+}
+
+function enableVoting() {
+  document.getElementById('vote-section').classList.add('visible');
+  document.getElementById('vote-section').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  if (_guard === 'free') KeyManager.markFreeUsed();
+  panelData.forEach(({ modelSpec, el, bodyEl }) => {
+    el.classList.add('vote-mode');
+    el.onclick = () => { if (!voted) { voted = true; castVote(modelSpec, bodyEl.textContent.trim()); }};
+  });
+}
+
+function castVote(modelSpec, text) {
+  panelData.forEach(d => { d.el.classList.remove('vote-mode'); d.el.onclick = null; });
+  panelData.find(d => d.modelSpec.modelId === modelSpec.modelId)?.el.classList.add('winner');
+  const excerpt = text.slice(0, 120) + (text.length > 120 ? '...' : '');
+  document.getElementById('vote-section').style.display = 'none';
+  ShareCard.show({
+    game: 'Explain It As...',
+    headline: `${modelSpec.display} committed hardest 🎭`,
+    body: `As ${character}: "${excerpt}"`,
+    tweetText: `${modelSpec.display} explaining "${topic}" as ${character} on AILeela 🎭 "${excerpt}"`,
+  });
+}
+</script>
+</body>
+</html>

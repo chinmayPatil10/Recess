@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Roast ⚔ AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    .split-arena {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1px; background: var(--dim); margin-bottom: 1px;
+    }
+    @media (max-width: 640px) { .split-arena { grid-template-columns: 1fr; } }
+
+    .round-bar {
+      background: var(--bg3); border: 1px solid var(--dim);
+      padding: 0.75rem 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1px; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .round-name { font-family: var(--display); font-size: 1.1rem; letter-spacing: -0.02em; }
+    .round-dots { display: flex; gap: 0.4rem; }
+    .round-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 1px solid var(--dim); transition: all 0.3s;
+    }
+    .round-dot.done   { background: var(--green); border-color: var(--green); }
+    .round-dot.active { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+    .model-select-grid {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.75rem; align-items: start;
+    }
+    @media (max-width: 640px) { .model-select-grid { grid-template-columns: 1fr; } }
+    .vs-label { font-family: var(--display); font-size: 1.5rem; color: var(--muted); text-align: center; padding-top: 1.5rem; }
+
+    .stance-tag {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 2px 6px; border: 1px solid; border-radius: 2px;
+    }
+    .stance-for     { color: var(--green); border-color: var(--green); background: rgba(64,232,144,0.1); }
+    .stance-against { color: var(--pink);  border-color: var(--pink);  background: rgba(232,48,138,0.1); }
+    .stance-closing { color: var(--accent);border-color: var(--accent);background: rgba(240,224,64,0.1); }
+
+    .btn-next {
+      width: 100%; padding: 0.7rem;
+      background: transparent; border: 1px solid var(--dim);
+      color: var(--muted); font-family: var(--mono); font-size: 11px;
+      font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: crosshair; transition: all 0.15s;
+    }
+    .btn-next:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .btn-next:disabled { cursor: wait; opacity: 0.5; }
+
+    .selector-note {
+      font-size: 11px; color: var(--muted); margin-top: 0.5rem;
+      min-height: 16px; letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div id="no-key-overlay" class="no-key-overlay">
+  <div class="no-key-card">
+    <h2>FREE ROUND USED</h2>
+    <p>You've used your free round. Enter an API key in the lobby to keep playing — Gemini is completely free!</p>
+    <a class="arcade-btn-primary" href="../index.html#key-entry">← GET A KEY</a>
+    <a class="arcade-btn-ghost" href="../index.html" style="margin-top:0.5rem">← BACK TO LOBBY</a>
+  </div>
+</div>
+
+<div class="game-page-wrap">
+
+  <!-- SETUP -->
+  <div id="setup" class="game-setup-card">
+    <div class="game-title">⚔ MODEL ROAST</div>
+    <div class="game-tagline">Two models debate a topic. Three rounds. You vote the winner.</div>
+
+    <!-- Free mode note -->
+    <div id="free-mode-note" style="display:none;background:rgba(232,48,138,0.08);border:1px solid rgba(232,48,138,0.25);padding:0.6rem 0.85rem;margin-bottom:1rem;font-size:11px;color:var(--pink)">
+      ⚡ FREE MODE — powered by open-source AI · 1 round per session
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">PICK A TOPIC</label>
+      <div class="preset-chips" id="topic-chips"></div>
+      <input type="text" id="topic-input" class="arcade-input"
+        placeholder="...or type your own debate topic" maxlength="120"
+        oninput="state.topic = this.value.trim(); checkReady()">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">PICK TWO FIGHTERS</label>
+      <div class="model-select-grid">
+        <div>
+          <div class="label" style="margin-bottom:0.35rem;color:var(--green)">FIGHTER A — argues FOR</div>
+          <select id="selector-a" class="arcade-select" style="width:100%"></select>
+        </div>
+        <div class="vs-label">VS</div>
+        <div>
+          <div class="label" style="margin-bottom:0.35rem;color:var(--pink)">FIGHTER B — argues AGAINST</div>
+          <select id="selector-b" class="arcade-select" style="width:100%"></select>
+        </div>
+      </div>
+      <div class="selector-note" id="selector-note"></div>
+    </div>
+
+    <button id="btn-start" class="arcade-btn-primary" style="width:100%;padding:0.85rem" disabled onclick="startDebate()">
+      PICK A TOPIC FIRST
+    </button>
+  </div>
+
+  <!-- ARENA -->
+  <div id="arena" style="display:none">
+    <div class="round-bar">
+      <div>
+        <div class="label" style="margin-bottom:0.2rem">ROUND <span id="round-num">1</span> OF 3</div>
+        <div class="round-name" id="round-name">OPENING ARGUMENTS</div>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:0.3rem;text-align:right">PROGRESS</div>
+        <div class="round-dots">
+          <div class="round-dot active" id="dot-1"></div>
+          <div class="round-dot" id="dot-2"></div>
+          <div class="round-dot" id="dot-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:rgba(240,224,64,0.05);border:1px solid rgba(240,224,64,0.15);border-top:none;padding:0.5rem 1rem;font-size:12px;margin-bottom:1px">
+      <span style="color:var(--muted)">TOPIC: </span>
+      <span id="banner-topic" style="color:var(--accent)"></span>
+    </div>
+
+    <div class="split-arena">
+      <div class="game-panel" id="panel-a">
+        <div class="panel-header">
+          <span class="panel-model-label" id="panel-a-name" style="color:var(--green)">—</span>
+          <span class="stance-tag stance-for" id="panel-a-stance">FOR</span>
+        </div>
+        <div class="panel-body panel-content" id="panel-a-body">
+          <div class="panel-thinking"><span>thinking</span><span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
+        </div>
+      </div>
+      <div class="game-panel" id="panel-b">
+        <div class="panel-header">
+          <span class="panel-model-label" id="panel-b-name" style="color:var(--pink)">—</span>
+          <span class="stance-tag stance-against" id="panel-b-stance">AGAINST</span>
+        </div>
+        <div class="panel-body panel-content" id="panel-b-body">
+          <div class="panel-thinking"><span>thinking</span><span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <button id="btn-next" class="btn-next" disabled onclick="nextRound()">
+      WAITING FOR BOTH FIGHTERS...
+    </button>
+
+    <div class="vote-section" id="vote-section">
+      <div class="vote-title">Who won the debate?</div>
+      <div class="vote-grid">
+        <button class="arcade-btn-ghost" onclick="castVote('a')"
+          style="border-color:var(--green);color:var(--green)">
+          🟢 <span id="vote-a-label">FIGHTER A</span>
+        </button>
+        <button class="arcade-btn-ghost" onclick="castVote('tie')">🤝 TIE</button>
+        <button class="arcade-btn-ghost" onclick="castVote('b')"
+          style="border-color:var(--pink);color:var(--pink)">
+          🔴 <span id="vote-b-label">FIGHTER B</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="error-toast"></div>
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/share-card.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.inject('game');
+
+// Guard: wall = show overlay, free = allow with free models, true = allow with key
+const _guard = KeyManager.guardPage();
+if (_guard === 'wall') {
+  document.getElementById('no-key-overlay').classList.add('visible');
+}
+if (_guard === 'free') {
+  document.getElementById('free-mode-note').style.display = 'block';
+}
+
+const PRESETS = [
+  'Is a hot dog a sandwich?','Pineapple on pizza: acceptable?',
+  'Is cereal soup?','Tabs or spaces?',
+  'Is a GIF pronounced "jif" or "gif"?','Remote work beats office life',
+  'AI will replace programmers',
+];
+
+const ROUND_META = [
+  { label:'OPENING ARGUMENTS', stanceA:'FOR',     stanceB:'AGAINST' },
+  { label:'REBUTTAL',          stanceA:'AGAINST', stanceB:'FOR'     },
+  { label:'CLOSING STATEMENT', stanceA:'CLOSING', stanceB:'CLOSING' },
+];
+
+const state = {
+  topic:'', round:0,
+  modelA: null, modelB: null,  // { provider, key, modelId, display }
+  responses:{ a:['','',''], b:['','',''] },
+};
+
+// Build VS selector
+const vsSelector = buildVsSelector(
+  document.getElementById('selector-a'),
+  document.getElementById('selector-b')
+);
+
+// Update selector note and ready state when selections change
+function onSelectorChange() {
+  const note = document.getElementById('selector-note');
+  note.textContent = vsSelector.getNote();
+  checkReady();
+}
+
+document.getElementById('selector-a').addEventListener('change', onSelectorChange);
+document.getElementById('selector-b').addEventListener('change', onSelectorChange);
+
+// Render preset chips
+const chipWrap = document.getElementById('topic-chips');
+PRESETS.forEach(p => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-chip';
+  btn.textContent = p;
+  btn.onclick = () => {
+    document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('topic-input').value = p;
+    state.topic = p; checkReady();
+  };
+  chipWrap.appendChild(btn);
+});
+
+// Init note
+document.getElementById('selector-note').textContent = vsSelector.getNote();
+
+function checkReady() {
+  const btn = document.getElementById('btn-start');
+  const valid = vsSelector.isValid();
+  if (state.topic && valid) {
+    btn.disabled = false; btn.textContent = '⚔ LET THE ROAST BEGIN';
+  } else {
+    btn.disabled = true;
+    btn.textContent = !state.topic ? 'PICK A TOPIC FIRST' : 'PICK TWO DIFFERENT FIGHTERS';
+  }
+}
+
+function startDebate() {
+  state.modelA = vsSelector.getModelA();
+  state.modelB = vsSelector.getModelB();
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('arena').style.display = 'block';
+  document.getElementById('banner-topic').textContent = state.topic;
+  document.getElementById('panel-a-name').textContent = state.modelA.display;
+  document.getElementById('panel-b-name').textContent = state.modelB.display;
+  document.getElementById('vote-a-label').textContent = state.modelA.display.toUpperCase();
+  document.getElementById('vote-b-label').textContent = state.modelB.display.toUpperCase();
+  runRound(1);
+}
+
+function updateRoundUI(n) {
+  document.getElementById('round-num').textContent = n;
+  document.getElementById('round-name').textContent = ROUND_META[n-1].label;
+  for (let i = 1; i <= 3; i++) {
+    const d = document.getElementById(`dot-${i}`);
+    d.className = 'round-dot';
+    if (i < n) d.classList.add('done');
+    if (i === n) d.classList.add('active');
+  }
+}
+
+function setStance(side, stance) {
+  const el = document.getElementById(`panel-${side}-stance`);
+  el.className = `stance-tag stance-${stance.toLowerCase()}`;
+  el.textContent = stance;
+}
+
+function resetPanel(side) {
+  document.getElementById(`panel-${side}`).className = 'game-panel';
+  document.getElementById(`panel-${side}-body`).innerHTML =
+    '<div class="panel-thinking"><span>thinking</span><span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>';
+}
+
+async function runRound(n) {
+  state.round = n;
+  updateRoundUI(n);
+  setStance('a', ROUND_META[n-1].stanceA);
+  setStance('b', ROUND_META[n-1].stanceB);
+  resetPanel('a'); resetPanel('b');
+
+  const btnNext = document.getElementById('btn-next');
+  btnNext.disabled = true;
+  btnNext.textContent = 'WAITING FOR BOTH FIGHTERS...';
+
+  const [resA, resB] = await Promise.allSettled([
+    streamToPanel(
+      state.modelA,
+      [{ role:'user', content: buildPrompt(n,'a',ROUND_META[n-1].stanceA) }],
+      document.getElementById('panel-a-body'),
+      document.getElementById('panel-a')
+    ),
+    streamToPanel(
+      state.modelB,
+      [{ role:'user', content: buildPrompt(n,'b',ROUND_META[n-1].stanceB) }],
+      document.getElementById('panel-b-body'),
+      document.getElementById('panel-b')
+    ),
+  ]);
+
+  state.responses.a[n-1] = resA.status === 'fulfilled' ? resA.value.text : '';
+  state.responses.b[n-1] = resB.status === 'fulfilled' ? resB.value.text : '';
+
+  if (n < 3) {
+    btnNext.disabled = false;
+    btnNext.textContent = `▶ ROUND ${n+1}: ${ROUND_META[n].label}`;
+  } else {
+    btnNext.style.display = 'none';
+    // Mark free round as used after all 3 rounds complete
+    if (_guard === 'free') KeyManager.markFreeUsed();
+    document.getElementById('vote-section').classList.add('visible');
+    document.getElementById('vote-section').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
+function buildPrompt(round, side, stance) {
+  const topic = state.topic;
+  const oppText = state.responses[side === 'a' ? 'b' : 'a'][round - 2] || '';
+  if (round === 1)
+    return `You are a sharp debater. Argue ${stance} the following: "${topic}". Make your strongest opening argument in 3-4 sentences. Be persuasive, witty, specific. Do not mention you are an AI.${NO_META}`;
+  if (round === 2)
+    return `You are debating ${stance} "${topic}". Your opponent just said: "${oppText}". Rebut them and add new points. 3-4 sentences, sharp and direct. Do not say you are an AI.${NO_META}`;
+  return `Give a memorable closing statement for the debate on "${topic}". Distill your best arguments into 2-3 sentences. End with a killer line. Do not say you are an AI.${NO_META}`;
+}
+
+function nextRound() {
+  document.getElementById('btn-next').disabled = true;
+  document.getElementById('arena').scrollIntoView({ behavior:'smooth', block:'start' });
+  runRound(state.round + 1);
+}
+
+function castVote(winner) {
+  const nA = state.modelA.display;
+  const nB = state.modelB.display;
+  const t = state.topic;
+  const data = winner === 'a'
+    ? { headline:`${nA} wins 🏆`, body:`"${t}" — ${nA} defeated ${nB}`, tweet:`${nA} just destroyed ${nB} debating "${t}" 🔥 AILeela` }
+    : winner === 'b'
+    ? { headline:`${nB} wins 🏆`, body:`"${t}" — ${nB} defeated ${nA}`, tweet:`${nB} just destroyed ${nA} debating "${t}" 🔥 AILeela` }
+    : { headline:`🤝 It's a tie`, body:`"${t}" — ${nA} vs ${nB} ended in a draw`, tweet:`${nA} vs ${nB} debating "${t}" — IT'S A TIE 🤝 AILeela` };
+  document.getElementById('vote-section').style.display = 'none';
+  ShareCard.show({ game:'Model Roast', headline:data.headline, body:data.body, tweetText:data.tweet });
+}
+</script>
+</body>
+</html>

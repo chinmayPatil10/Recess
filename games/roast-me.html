@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roast Me 😈 AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    .roast-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1px; background: var(--dim);
+    }
+    .roast-panel {
+      background: var(--bg2); display: flex; flex-direction: column;
+      min-height: 200px; transition: all 0.15s; position: relative;
+    }
+    .roast-panel.vote-mode { cursor: crosshair; }
+    .roast-panel.vote-mode:hover { background: var(--bg3); }
+    .roast-panel.winner {
+      border: 1px solid var(--accent); background: rgba(240,224,64,0.04);
+    }
+    .vote-overlay {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: var(--accent);
+      opacity: 0; transition: opacity 0.15s; text-transform: uppercase;
+      background: rgba(240,224,64,0.08);
+    }
+    .roast-panel.vote-mode:hover .vote-overlay { opacity: 1; }
+
+    textarea.arcade-input {
+      resize: vertical; min-height: 100px; line-height: 1.7;
+    }
+    .char-count { font-size: 10px; color: var(--muted); text-align: right; margin-top: 0.3rem; }
+    .char-count.warning { color: var(--pink); }
+
+    .selector-note { font-size: 11px; color: var(--muted); margin-top: 0.5rem; min-height: 16px; }
+  </style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div id="no-key-overlay" class="no-key-overlay">
+  <div class="no-key-card">
+    <h2>FREE ROUND USED</h2>
+    <p>You've used your free round. Enter an API key to keep playing — Gemini is completely free!</p>
+    <a class="arcade-btn-primary" href="../index.html#key-entry">← GET A KEY</a>
+    <a class="arcade-btn-ghost" href="../index.html" style="margin-top:0.5rem">← BACK TO LOBBY</a>
+  </div>
+</div>
+
+<div class="game-page-wrap">
+
+  <!-- SETUP -->
+  <div id="setup" class="game-setup-card">
+    <div class="game-title">😈 ROAST ME</div>
+    <div class="game-tagline">Describe yourself. Let every AI roast you in 3 sentences. Vote the funniest.</div>
+
+    <div class="form-group">
+      <label class="form-label">DESCRIBE YOURSELF</label>
+      <textarea id="bio-input" class="arcade-input" maxlength="300" rows="4"
+        placeholder="e.g. I'm a developer who spends 3 hours optimizing code to save 2 seconds, drinks 4 coffees a day, and has 47 browser tabs open right now..."
+        oninput="checkReady(this)"></textarea>
+      <div class="char-count" id="char-count">0 / 300</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">SELECT ROASTERS (pick at least 2)</label>
+      <div id="model-selector"></div>
+      <div class="selector-note" id="selector-note"></div>
+    </div>
+
+    <button id="btn-start" class="arcade-btn-primary" style="width:100%;padding:0.85rem" disabled onclick="startRoast()">
+      DESCRIBE YOURSELF FIRST
+    </button>
+  </div>
+
+  <!-- ROAST AREA -->
+  <div id="roast-area" style="display:none">
+    <div style="background:var(--bg3);border:1px solid var(--dim);padding:0.75rem 1rem;margin-bottom:1px">
+      <div class="label" style="margin-bottom:0.3rem">THE VICTIM SAID</div>
+      <div id="bio-display" style="font-size:12px;color:var(--muted);font-style:italic;line-height:1.6"></div>
+    </div>
+
+    <div class="roast-grid" id="roast-grid"></div>
+
+    <div class="vote-section" id="vote-section" style="margin-top:1px">
+      <div class="vote-title">Which roast hit hardest? 😭</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:0.5rem">Click on a roast panel to vote</div>
+    </div>
+  </div>
+</div>
+
+<div id="error-toast"></div>
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/share-card.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.inject('game');
+
+const _guard = KeyManager.guardPage();
+if (_guard === 'wall') document.getElementById('no-key-overlay').classList.add('visible');
+
+let voted = false;
+let panelData = [];
+
+// Model selector
+const selector = buildSelector(document.getElementById('model-selector'), {
+  min: 2, max: 5, onChange: () => {
+    document.getElementById('selector-note').textContent = selector.getNote();
+    checkReady();
+  }
+});
+document.getElementById('selector-note').textContent = selector.getNote();
+
+function checkReady(textarea) {
+  const bio = document.getElementById('bio-input').value.trim();
+  const count = document.getElementById('bio-input').value.length;
+  const cc = document.getElementById('char-count');
+  cc.textContent = `${count} / 300`;
+  cc.className = 'char-count' + (count > 260 ? ' warning' : '');
+
+  const btn = document.getElementById('btn-start');
+  if (bio.length > 10 && selector.isValid()) {
+    btn.disabled = false; btn.textContent = '😈 ROAST ME';
+  } else {
+    btn.disabled = true;
+    btn.textContent = bio.length <= 10 ? 'DESCRIBE YOURSELF FIRST' : 'SELECT AT LEAST 2 MODELS';
+  }
+}
+
+function startRoast() {
+  const bio = document.getElementById('bio-input').value.trim();
+  const models = selector.getModels();
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('roast-area').style.display = 'block';
+  document.getElementById('bio-display').textContent = `"${bio}"`;
+
+  const rGrid = document.getElementById('roast-grid');
+  rGrid.innerHTML = '';
+  panelData = [];
+
+  models.forEach(modelSpec => {
+    const safeId = modelSpec.modelId.replace(/[^a-z0-9]/g, '-');
+    const panel = document.createElement('div');
+    panel.className = 'roast-panel game-panel';
+    panel.innerHTML = `
+      <div class="vote-overlay">CLICK TO VOTE ▶</div>
+      <div class="panel-header">
+        <span class="panel-model-label" style="color:${getModelColor(modelSpec.provider || modelSpec.modelId)}">${modelSpec.display}</span>
+        <span class="arcade-tag" id="roast-tag-${safeId}">ROASTING...</span>
+      </div>
+      <div class="panel-body panel-content" id="roast-body-${safeId}">
+        <div class="panel-thinking"><span>taking aim</span><span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
+      </div>
+    `;
+    rGrid.appendChild(panel);
+    panelData.push({ modelSpec, el: panel, bodyEl: panel.querySelector(`#roast-body-${safeId}`), safeId });
+  });
+
+  runRoast(bio);
+}
+
+async function runRoast(bio) {
+  const sysPrompt = `You are a stand-up comedian doing a roast. Write exactly 3 sentences roasting this person based on what they said about themselves. Be funny and observational — highlight the contradiction or irony. Be witty, not cruel. End with a punchline.${NO_META}`;
+
+  let doneCount = 0;
+  const total = panelData.length;
+
+  await Promise.allSettled(panelData.map(({ modelSpec, el, bodyEl, safeId }) => {
+    el.classList.add('streaming');
+    return streamToPanel(
+      modelSpec,
+      [
+        { role:'system', content: sysPrompt },
+        { role:'user',   content: `Roast this person: "${bio}"` },
+      ],
+      bodyEl, el
+    ).then(() => {
+      const tag = document.getElementById(`roast-tag-${safeId}`);
+      if (tag) { tag.textContent = 'READY'; tag.className = 'arcade-tag green'; }
+      doneCount++;
+      if (doneCount === total) enableVoting();
+    });
+  }));
+}
+
+function enableVoting() {
+  document.getElementById('vote-section').classList.add('visible');
+  document.getElementById('vote-section').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  if (_guard === 'free') KeyManager.markFreeUsed();
+  panelData.forEach(({ modelSpec, el, bodyEl }) => {
+    el.classList.add('vote-mode');
+    el.onclick = () => { if (!voted) { voted = true; castVote(modelSpec, bodyEl.textContent.trim()); }};
+  });
+}
+
+function castVote(modelSpec, roastText) {
+  panelData.forEach(d => { d.el.classList.remove('vote-mode'); d.el.onclick = null; });
+  panelData.find(d => d.modelSpec.modelId === modelSpec.modelId)?.el.classList.add('winner');
+  const firstSentence = roastText.split(/[.!?]/)[0] || roastText.slice(0,100);
+  document.getElementById('vote-section').style.display = 'none';
+  ShareCard.show({
+    game: 'Roast Me',
+    headline: `${modelSpec.display} won the roast 😭`,
+    body: firstSentence,
+    tweetText: `${modelSpec.display} just absolutely roasted me on AILeela 😭 "${firstSentence}"`,
+  });
+}
+</script>
+</body>
+</html>

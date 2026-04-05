@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Writers Room ✍️ AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    .writers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1px;
+      background: var(--dim);
+    }
+    .writer-panel {
+      background: var(--bg2);
+      display: flex;
+      flex-direction: column;
+      min-height: 240px;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .writer-panel.vote-mode { cursor: crosshair; }
+    .writer-panel.vote-mode:hover { background: var(--bg3); }
+    .writer-panel.winner { background: rgba(240,224,64,0.04); border: 1px solid var(--accent); }
+
+    .vote-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: var(--accent);
+      opacity: 0; transition: opacity 0.15s; text-transform: uppercase;
+      background: rgba(240,224,64,0.08);
+    }
+    .writer-panel.vote-mode:hover .vote-overlay { opacity: 1; }
+
+    .panel-header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1rem 0.5rem;
+      border-bottom: 1px solid var(--dim);
+    }
+    .panel-emoji { font-size: 1.3rem; line-height: 1; }
+    .panel-name { font-family: var(--display); font-size: 0.85rem; letter-spacing: -0.01em; }
+    .panel-winner-badge {
+      margin-left: auto;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+      color: var(--accent); background: rgba(240,224,64,0.1);
+      border: 1px solid rgba(240,224,64,0.3);
+      padding: 2px 6px; display: none;
+    }
+    .writer-panel.winner .panel-winner-badge { display: inline-block; }
+
+    .panel-body {
+      padding: 0.75rem 1rem;
+      font-size: 13px;
+      line-height: 1.9;
+      flex: 1;
+      color: var(--text);
+      font-style: italic;
+    }
+    .panel-body .thinking {
+      color: var(--dim); font-size: 11px; letter-spacing: 0.06em;
+      font-style: normal;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    textarea.arcade-input { resize: vertical; min-height: 90px; line-height: 1.7; }
+    .selector-note { font-size: 11px; color: var(--muted); margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div id="no-key-overlay" class="no-key-overlay">
+  <div class="no-key-card">
+    <h2>FREE ROUND USED</h2>
+    <p>You've used your free round. Enter an API key to keep playing — Gemini is completely free!</p>
+    <a class="arcade-btn-primary" href="../index.html#key-entry">← GET A KEY</a>
+    <a class="arcade-btn-ghost" href="../index.html" style="margin-top:0.5rem">← BACK TO LOBBY</a>
+  </div>
+</div>
+
+<div class="game-page-wrap">
+
+  <div id="setup" class="game-setup-card">
+    <div class="game-title">✍️ THE WRITERS ROOM</div>
+    <div class="game-tagline">Give a scene or premise. Four literary legends write the opening paragraph.</div>
+
+    <div class="setup-section">
+      <div class="setup-label">YOUR SCENE OR PREMISE</div>
+      <textarea
+        id="premise-input"
+        class="arcade-input"
+        placeholder="e.g. A woman discovers her neighbour has been missing for three weeks.&#10;Or: Two old friends meet at a funeral after 20 years apart."
+        oninput="validateStart()"
+      ></textarea>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label" style="margin-bottom:0.5rem">MODEL</div>
+      <div id="model-selector"></div>
+      <div id="model-note" class="selector-note"></div>
+    </div>
+
+    <button class="arcade-btn-primary" id="start-btn" onclick="startSession()" disabled>
+      ▶ START WRITING
+    </button>
+  </div>
+
+  <div id="game" style="display:none">
+    <div id="writers-grid" class="writers-grid"></div>
+
+    <div id="vote-section" class="vote-section" style="margin-top:2rem;display:none">
+      <div class="vote-title">WHOSE PROSE WOULD YOU KEEP READING?</div>
+      <div id="vote-grid" class="vote-grid"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:2rem">
+      <button class="arcade-btn-ghost" onclick="resetGame()">← NEW PREMISE</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const WRITERS = [
+  {
+    id: 'hemingway',
+    name: 'Hemingway',
+    emoji: '🥃',
+    color: 'var(--accent)',
+    systemPrompt: `You are Ernest Hemingway. Write a short opening paragraph for the given scene. Use short, declarative sentences. The iceberg theory: most meaning is beneath the surface. No adverbs. No sentimentality. Strong verbs. Nothing wasted. Write exactly one paragraph of 4–6 sentences.${NO_META}`,
+  },
+  {
+    id: 'austen',
+    name: 'Jane Austen',
+    emoji: '🎩',
+    color: 'var(--cyan)',
+    systemPrompt: `You are Jane Austen. Write a short opening paragraph for the given scene. Observe social dynamics with precise irony. Use elegant, balanced sentences. Note what is unspoken between characters. Write exactly one paragraph of 4–6 sentences.${NO_META}`,
+  },
+  {
+    id: 'hst',
+    name: 'Hunter S. Thompson',
+    emoji: '🦇',
+    color: 'var(--pink)',
+    systemPrompt: `You are Hunter S. Thompson writing gonzo journalism. Write a short opening paragraph for the given scene. First person, chaotic energy. The narrator is always somewhat implicated. Strange details matter. Reality is slightly unhinged. Write exactly one paragraph of 4–6 sentences.${NO_META}`,
+  },
+  {
+    id: 'attenborough',
+    name: 'David Attenborough',
+    emoji: '🌿',
+    color: 'var(--green)',
+    systemPrompt: `You are David Attenborough narrating a nature documentary — but the subject is human beings. Write a short opening paragraph for the given scene as though narrating it for a wildlife documentary. Observe the humans with detached, scientific wonder. Use a calm, measured, slightly wondering tone. Write exactly one paragraph of 4–6 sentences.${NO_META}`,
+  },
+];
+
+let _guard, _selector, _provider = null, _apiKey = null, _doneCount = 0;
+
+window.addEventListener('DOMContentLoaded', () => {
+  Nav.inject('game');
+  _guard = KeyManager.guardPage();
+  if (_guard === 'wall') return;
+  document.getElementById('no-key-overlay').style.display = 'none';
+  initSelector();
+});
+
+function initSelector() {
+  _selector = buildModelSelector(
+    document.getElementById('model-selector'),
+    { min: 1, max: 1, personas: WRITERS, onChange: updateNote }
+  );
+  updateNote();
+}
+
+function updateNote() {
+  const note = document.getElementById('model-note');
+  if (_selector) note.textContent = _selector.getNote();
+  validateStart();
+}
+
+function validateStart() {
+  const p = document.getElementById('premise-input').value.trim();
+  document.getElementById('start-btn').disabled = p.length < 10;
+}
+
+function startSession() {
+  const premise = document.getElementById('premise-input').value.trim();
+  if (!premise) return;
+
+  const available = KeyManager.getAvailableProviders();
+  if (available.length > 0) {
+    _provider = available[0];
+    _apiKey   = KeyManager.get(_provider);
+  } else {
+    _provider = 'free';
+    _apiKey   = null;
+    if (_guard !== 'free') return;
+  }
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game').style.display  = 'block';
+  document.getElementById('vote-section').style.display = 'none';
+
+  buildPanels();
+  runWriters(premise);
+}
+
+function buildPanels() {
+  document.getElementById('writers-grid').innerHTML = WRITERS.map(w => `
+    <div class="writer-panel" id="panel-${w.id}" style="border-top:2px solid ${w.color}">
+      <div class="panel-header">
+        <span class="panel-emoji">${w.emoji}</span>
+        <span class="panel-name" style="color:${w.color}">${w.name}</span>
+        <span class="panel-winner-badge">★ BEST PROSE</span>
+      </div>
+      <div class="panel-body panel-content streaming" id="body-${w.id}"><span class="thinking">writing...</span></div>
+      <div class="vote-overlay">▶ THIS ONE</div>
+    </div>
+  `).join('');
+}
+
+function runWriters(premise) {
+  _doneCount = 0;
+  const prompt = `Write an opening paragraph for this scene: ${premise}`;
+  const buffers = {};
+  WRITERS.forEach(w => { buffers[w.id] = ''; });
+
+  const callbacks = WRITERS.map(w => ({
+    onChunk(text) {
+      buffers[w.id] += text;
+      const el = document.getElementById(`body-${w.id}`);
+      if (el) {
+        const preview = (buffers[w.id].replace(/#{1,4}\s+[^\n]*/g,'').replace(/\n+/g,' ').trim()).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        el.innerHTML = `<span class="sentence">${preview}&#9611;</span>`;
+        el.scrollTop = el.scrollHeight;
+      }
+    },
+    onDone(fullText) {
+      const el = document.getElementById(`body-${w.id}`);
+      if (el) {
+        el.innerHTML = renderResponse(fullText || buffers[w.id]);
+        el.classList.remove('streaming');
+        el.classList.add('done');
+      }
+      _doneCount++;
+      if (_doneCount === WRITERS.length) onAllDone();
+    },
+    onError(err) {
+      const el = document.getElementById(`body-${w.id}`);
+      if (el) {
+        el.classList.remove('streaming');
+        el.innerHTML = `<p style="color:var(--pink);font-size:11px;font-style:normal">Error: ${escHtml(String(err))}</p>`;
+      }
+      _doneCount++;
+      if (_doneCount === WRITERS.length) onAllDone();
+    },
+  }));
+
+  callAllPersonas(WRITERS, prompt, _apiKey, _provider, callbacks);
+}
+
+function onAllDone() {
+  if (_guard === 'free') KeyManager.markFreeUsed();
+
+  const voteSection = document.getElementById('vote-section');
+  voteSection.style.display = 'block';
+
+  document.getElementById('vote-grid').innerHTML = WRITERS.map(w => `
+    <button class="arcade-btn-ghost" onclick="vote('${w.id}')"
+      style="border-color:${w.color};color:${w.color}">
+      ${w.emoji} ${w.name}
+    </button>
+  `).join('');
+
+  WRITERS.forEach(w => {
+    const panel = document.getElementById(`panel-${w.id}`);
+    if (panel) {
+      panel.classList.add('vote-mode');
+      panel.onclick = () => vote(w.id);
+    }
+  });
+}
+
+function vote(writerId) {
+  WRITERS.forEach(w => {
+    const panel = document.getElementById(`panel-${w.id}`);
+    if (panel) {
+      panel.classList.remove('vote-mode', 'winner');
+      panel.onclick = null;
+      if (w.id === writerId) panel.classList.add('winner');
+    }
+  });
+  document.getElementById('vote-section').style.display = 'none';
+}
+
+function resetGame() {
+  document.getElementById('setup').style.display = 'block';
+  document.getElementById('game').style.display  = 'none';
+  document.getElementById('premise-input').value = '';
+  validateStart();
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

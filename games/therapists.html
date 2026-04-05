@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Therapists �️ AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    .therapist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1px;
+      background: var(--dim);
+    }
+    .therapist-panel {
+      background: var(--bg2);
+      display: flex;
+      flex-direction: column;
+      min-height: 220px;
+      transition: all 0.15s;
+      position: relative;
+      border: 2px solid transparent;
+    }
+    .therapist-panel.vote-mode { cursor: crosshair; }
+    .therapist-panel.vote-mode:hover { background: var(--bg3); }
+    .therapist-panel.winner { background: rgba(240,224,64,0.04); }
+
+    .vote-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: var(--accent);
+      opacity: 0; transition: opacity 0.15s; text-transform: uppercase;
+      background: rgba(240,224,64,0.08);
+    }
+    .therapist-panel.vote-mode:hover .vote-overlay { opacity: 1; }
+
+    .panel-header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1rem 0.5rem;
+      border-bottom: 1px solid var(--dim);
+    }
+    .panel-emoji { font-size: 1.3rem; line-height: 1; }
+    .panel-name {
+      font-family: var(--display);
+      font-size: 0.85rem;
+      letter-spacing: -0.01em;
+    }
+    .panel-winner-badge {
+      margin-left: auto;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+      color: var(--accent); background: rgba(240,224,64,0.1);
+      border: 1px solid rgba(240,224,64,0.3);
+      padding: 2px 6px;
+      display: none;
+    }
+    .therapist-panel.winner .panel-winner-badge { display: inline-block; }
+
+    .panel-body {
+      padding: 0.75rem 1rem;
+      font-size: 13px;
+      line-height: 1.75;
+      flex: 1;
+      color: var(--text);
+    }
+    .panel-body .thinking {
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .persona-chip {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--dim);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .persona-chip.selected { border-color: var(--accent); background: rgba(240,224,64,0.05); }
+    .persona-chip-emoji { font-size: 1.2rem; }
+    .persona-chip-info { flex: 1; }
+    .persona-chip-name { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; }
+    .persona-chip-desc { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .persona-chip-check {
+      font-size: 12px; color: var(--accent);
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .persona-chip.selected .persona-chip-check { opacity: 1; }
+
+    .followup-section {
+      margin-top: 1.5rem;
+      display: none;
+    }
+    .followup-section.visible { display: block; }
+    .followup-row {
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .followup-row input { flex: 1; min-width: 0; }
+
+    textarea.arcade-input {
+      resize: vertical; min-height: 110px; line-height: 1.7;
+    }
+    .selector-note { font-size: 11px; color: var(--muted); margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div id="no-key-overlay" class="no-key-overlay">
+  <div class="no-key-card">
+    <h2>FREE ROUND USED</h2>
+    <p>You've used your free round. Enter an API key to keep playing — Gemini is completely free!</p>
+    <a class="arcade-btn-primary" href="../index.html#key-entry">← GET A KEY</a>
+    <a class="arcade-btn-ghost" href="../index.html" style="margin-top:0.5rem">← BACK TO LOBBY</a>
+  </div>
+</div>
+
+<div class="game-page-wrap">
+
+  <!-- SETUP -->
+  <div id="setup" class="game-setup-card">
+    <div class="game-title">🛋️ THE THERAPISTS</div>
+    <div class="game-tagline">Share what's on your mind. Five very different perspectives respond at once.</div>
+
+    <div class="setup-section">
+      <div class="setup-label">WHAT'S ON YOUR MIND?</div>
+      <textarea
+        id="problem-input"
+        class="arcade-input"
+        placeholder="A problem, situation, or question you want advice on.&#10;Be as honest as you like — all 5 respond differently."
+        oninput="onProblemInput(this.value)"
+      ></textarea>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label">CHOOSE YOUR ADVISORS <span style="color:var(--muted);font-weight:400;font-size:10px">(min 2, max 5)</span></div>
+      <div id="persona-chips" style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.5rem"></div>
+      <div id="persona-count-note" class="selector-note"></div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label" style="margin-bottom:0.5rem">MODEL</div>
+      <div id="model-selector"></div>
+      <div id="model-note" class="selector-note"></div>
+    </div>
+
+    <button class="arcade-btn-primary" id="start-btn" onclick="startSession()" disabled>
+      ▶ START SESSION
+    </button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game" style="display:none">
+    <div id="therapist-grid" class="therapist-grid"></div>
+
+    <div id="vote-section" class="vote-section" style="margin-top:2rem">
+      <div class="vote-title">WHICH ADVICE HITS HARDEST?</div>
+      <div id="vote-grid" class="vote-grid"></div>
+    </div>
+
+    <div id="followup-section" class="followup-section">
+      <div class="setup-label" style="margin-bottom:0.5rem">ASK A FOLLOW-UP</div>
+      <div class="followup-row">
+        <input type="text" id="followup-input" class="arcade-input"
+          placeholder="Your follow-up question…"
+          onkeydown="if(event.key==='Enter') sendFollowup('all')">
+        <button class="arcade-btn-primary" onclick="sendFollowup('all')">SEND TO ALL</button>
+        <button class="arcade-btn-ghost" id="send-winner-btn" onclick="sendFollowup('winner')" style="display:none">SEND TO WINNER</button>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:2rem">
+      <button class="arcade-btn-ghost" onclick="resetGame()">← NEW SESSION</button>
+    </div>
+  </div>
+
+</div><!-- /game-page-wrap -->
+
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+/* ── PERSONA DEFINITIONS ──────────────────────────────────── */
+const THERAPISTS = [
+  {
+    id: 'cbt',
+    name: 'CBT Therapist',
+    emoji: '🧠',
+    desc: 'Evidence-based, structured',
+    color: 'var(--cyan)',
+    borderClass: 'panel-border-cbt',
+    systemPrompt: `You are a Cognitive Behavioral Therapist. Respond with warmth and structure. Identify the cognitive distortion at play. Offer one practical reframe and one concrete action. Keep to 4 sentences.${NO_META}`,
+  },
+  {
+    id: 'stoic',
+    name: 'Stoic Philosopher',
+    emoji: '⚖️',
+    desc: 'Marcus Aurelius energy',
+    color: 'var(--muted)',
+    borderClass: 'panel-border-stoic',
+    systemPrompt: `You are a Stoic philosopher in the tradition of Marcus Aurelius and Epictetus. Respond with calm wisdom. Distinguish what is in the person's control from what is not. Quote a Stoic maxim if relevant. Keep to 4 sentences. Do not be warm — be honest.${NO_META}`,
+  },
+  {
+    id: 'hype',
+    name: 'Hype Man',
+    emoji: '🔥',
+    desc: 'You got this, bestie',
+    color: 'var(--green)',
+    borderClass: 'panel-border-hype',
+    systemPrompt: `You are an enthusiastic, supportive hype man who believes unconditionally in this person. Use casual language. Be energetic. Find the silver lining aggressively. Use "bestie", "literally", "you got this". Keep to 4 sentences. No negativity allowed.${NO_META}`,
+  },
+  {
+    id: 'brutal',
+    name: 'Brutal Honesty',
+    emoji: '🗡️',
+    desc: 'No sugarcoating whatsoever',
+    color: 'var(--pink)',
+    borderClass: 'panel-border-brutal',
+    systemPrompt: `You are a mentor famous for brutal honesty. No sugarcoating. No validation of bad decisions. Tell the person exactly what they need to hear, not what they want to hear. Be direct, not cruel. Keep to 4 sentences.${NO_META}`,
+  },
+  {
+    id: 'freudian',
+    name: 'Freudian Analyst',
+    emoji: '🛋️',
+    desc: 'Tell me about your mother',
+    color: '#9b59b6',
+    borderClass: 'panel-border-freudian',
+    systemPrompt: `You are a classic Freudian psychoanalyst. Connect the problem to childhood, the unconscious, or repressed desire. Reference the id, ego, or superego. Be slightly pretentious. Ask one probing question at the end about their mother or father. Keep to 4 sentences.${NO_META}`,
+  },
+];
+
+/* ── STATE ────────────────────────────────────────────────── */
+let _guard, _selector, _selectedPersonas = [...THERAPISTS];
+let _winnerPersona = null;
+let _activePersonas = [];
+let _provider = null, _apiKey = null;
+
+/* ── INIT ─────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+  Nav.inject('game');
+  _guard = KeyManager.guardPage();
+  if (_guard === 'wall') return;
+
+  document.getElementById('no-key-overlay').style.display = 'none';
+  renderPersonaChips();
+  initSelector();
+});
+
+function renderPersonaChips() {
+  const container = document.getElementById('persona-chips');
+  container.innerHTML = THERAPISTS.map(p => `
+    <div class="persona-chip selected" id="chip-${p.id}" onclick="togglePersona('${p.id}')">
+      <span class="persona-chip-emoji">${p.emoji}</span>
+      <div class="persona-chip-info">
+        <div class="persona-chip-name" style="color:${p.color}">${p.name}</div>
+        <div class="persona-chip-desc">${p.desc}</div>
+      </div>
+      <span class="persona-chip-check">✓</span>
+    </div>
+  `).join('');
+  updatePersonaCount();
+}
+
+function togglePersona(id) {
+  const idx = _selectedPersonas.findIndex(p => p.id === id);
+  const chip = document.getElementById(`chip-${id}`);
+  if (idx >= 0) {
+    if (_selectedPersonas.length <= 2) return; // min 2
+    _selectedPersonas.splice(idx, 1);
+    chip.classList.remove('selected');
+  } else {
+    _selectedPersonas.push(THERAPISTS.find(p => p.id === id));
+    chip.classList.add('selected');
+  }
+  updatePersonaCount();
+  validateStart();
+}
+
+function updatePersonaCount() {
+  const n = _selectedPersonas.length;
+  const note = document.getElementById('persona-count-note');
+  note.textContent = n < 2 ? 'Select at least 2 advisors' : `${n} advisor${n > 1 ? 's' : ''} selected`;
+  note.style.color = n < 2 ? 'var(--pink)' : 'var(--muted)';
+}
+
+function initSelector() {
+  _selector = buildModelSelector(
+    document.getElementById('model-selector'),
+    { min: 1, max: 1, personas: THERAPISTS, onChange: validateStart }
+  );
+  updateModelNote();
+  validateStart();
+}
+
+function updateModelNote() {
+  const note = document.getElementById('model-note');
+  if (_selector) note.textContent = _selector.getNote();
+}
+
+function onProblemInput(val) {
+  validateStart();
+}
+
+function validateStart() {
+  const problem = document.getElementById('problem-input').value.trim();
+  const btn = document.getElementById('start-btn');
+  const ok = problem.length >= 10 && _selectedPersonas.length >= 2;
+  btn.disabled = !ok;
+}
+
+/* ── SESSION ──────────────────────────────────────────────── */
+function startSession() {
+  const problem = document.getElementById('problem-input').value.trim();
+  if (!problem) return;
+
+  // Resolve provider/key
+  const available = KeyManager.getAvailableProviders();
+  if (available.length > 0) {
+    _provider = available[0];
+    _apiKey   = KeyManager.get(_provider);
+  } else {
+    _provider = 'free';
+    _apiKey   = null;
+    if (_guard !== 'free') return;
+  }
+
+  _activePersonas = [..._selectedPersonas];
+  _winnerPersona  = null;
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game').style.display   = 'block';
+  document.getElementById('vote-section').style.display   = 'none';
+  document.getElementById('followup-section').classList.remove('visible');
+
+  buildPanels(_activePersonas);
+  runPersonas(problem);
+}
+
+function buildPanels(personas) {
+  const grid = document.getElementById('therapist-grid');
+  grid.innerHTML = personas.map(p => `
+    <div class="therapist-panel ${p.borderClass}" id="panel-${p.id}" style="border-color:${p.color}">
+      <div class="panel-header">
+        <span class="panel-emoji">${p.emoji}</span>
+        <span class="panel-name">${p.name}</span>
+        <span class="panel-winner-badge">★ VOTED BEST</span>
+      </div>
+      <div class="panel-body panel-content streaming" id="body-${p.id}">
+        <span class="thinking">thinking...</span>
+      </div>
+      <div class="vote-overlay">▶ VOTE THIS</div>
+    </div>
+  `).join('');
+}
+
+let _doneCount = 0;
+function runPersonas(prompt) {
+  _doneCount = 0;
+  // Per-persona accumulation buffers
+  const buffers = {};
+  _activePersonas.forEach(p => { buffers[p.id] = ''; });
+
+  const callbacks = _activePersonas.map(p => ({
+    onChunk(text) {
+      buffers[p.id] += text;
+      const el = document.getElementById(`body-${p.id}`);
+      if (el) {
+        const preview = (buffers[p.id].replace(/#{1,4}\s+[^\n]*/g,'').replace(/\n+/g,' ').trim()).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        el.innerHTML = `<span class="sentence">${preview}&#9611;</span>`;
+        el.scrollTop = el.scrollHeight;
+      }
+    },
+    onDone(fullText) {
+      const el = document.getElementById(`body-${p.id}`);
+      if (el) {
+        el.innerHTML = renderResponse(fullText || buffers[p.id]);
+        el.classList.remove('streaming');
+        el.classList.add('done');
+      }
+      _doneCount++;
+      if (_doneCount === _activePersonas.length) onAllDone();
+    },
+    onError(err) {
+      const el = document.getElementById(`body-${p.id}`);
+      if (el) {
+        el.classList.remove('streaming');
+        el.innerHTML = `<p style="color:var(--pink);font-size:11px">Error: ${escHtml(String(err))}</p>`;
+      }
+      _doneCount++;
+      if (_doneCount === _activePersonas.length) onAllDone();
+    },
+  }));
+
+  callAllPersonas(_activePersonas, prompt, _apiKey, _provider, callbacks);
+}
+
+function onAllDone() {
+  if (_guard === 'free') KeyManager.markFreeUsed();
+
+  // Show vote section
+  const voteSection = document.getElementById('vote-section');
+  voteSection.style.display = 'block';
+
+  const voteGrid = document.getElementById('vote-grid');
+  voteGrid.innerHTML = _activePersonas.map(p => `
+    <button class="arcade-btn-ghost" onclick="vote('${p.id}')"
+      style="border-color:${p.color};color:${p.color}">
+      ${p.emoji} ${p.name}
+    </button>
+  `).join('');
+
+  // Enable vote-mode on panels
+  _activePersonas.forEach(p => {
+    const panel = document.getElementById(`panel-${p.id}`);
+    if (panel) {
+      panel.classList.add('vote-mode');
+      panel.onclick = () => vote(p.id);
+    }
+  });
+}
+
+function vote(personaId) {
+  _winnerPersona = _activePersonas.find(p => p.id === personaId);
+  if (!_winnerPersona) return;
+
+  // Mark winner
+  _activePersonas.forEach(p => {
+    const panel = document.getElementById(`panel-${p.id}`);
+    if (panel) {
+      panel.classList.remove('vote-mode', 'winner');
+      panel.onclick = null;
+      if (p.id === personaId) panel.classList.add('winner');
+    }
+  });
+
+  // Show follow-up section
+  const fu = document.getElementById('followup-section');
+  fu.classList.add('visible');
+  const winnerBtn = document.getElementById('send-winner-btn');
+  if (winnerBtn) winnerBtn.style.display = 'inline-flex';
+
+  // Hide vote section
+  document.getElementById('vote-section').style.display = 'none';
+  document.getElementById('followup-input').focus();
+}
+
+function sendFollowup(target) {
+  const question = document.getElementById('followup-input').value.trim();
+  if (!question) return;
+  document.getElementById('followup-input').value = '';
+
+  const targets = target === 'winner' && _winnerPersona
+    ? [_winnerPersona]
+    : _activePersonas;
+
+  // Reset panels for targets
+  const followupBuffers = {};
+  targets.forEach(p => {
+    followupBuffers[p.id] = '';
+    const el = document.getElementById(`body-${p.id}`);
+    if (el) {
+      el.innerHTML = '<span class="thinking">thinking...</span>';
+      el.classList.add('streaming');
+      el.classList.remove('done');
+    }
+  });
+
+  _doneCount = 0;
+  const callbacks = targets.map(p => ({
+    onChunk(text) {
+      followupBuffers[p.id] += text;
+      const el = document.getElementById(`body-${p.id}`);
+      if (el) {
+        const preview = (followupBuffers[p.id].replace(/#{1,4}\s+[^\n]*/g,'').replace(/\n+/g,' ').trim()).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        el.innerHTML = `<span class="sentence">${preview}&#9611;</span>`;
+        el.scrollTop = el.scrollHeight;
+      }
+    },
+    onDone(fullText) {
+      const el = document.getElementById(`body-${p.id}`);
+      if (el) {
+        el.innerHTML = renderResponse(fullText || followupBuffers[p.id]);
+        el.classList.remove('streaming');
+        el.classList.add('done');
+      }
+      _doneCount++;
+    },
+    onError(err) {
+      const el = document.getElementById(`body-${p.id}`);
+      if (el) {
+        el.classList.remove('streaming');
+        el.innerHTML = `<p style="color:var(--pink);font-size:11px">Error: ${escHtml(String(err))}</p>`;
+      }
+      _doneCount++;
+    },
+  }));
+
+  callAllPersonas(targets, question, _apiKey, _provider, callbacks);
+}
+
+function resetGame() {
+  document.getElementById('setup').style.display = 'block';
+  document.getElementById('game').style.display  = 'none';
+  document.getElementById('problem-input').value = '';
+  _winnerPersona = null;
+  validateStart();
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

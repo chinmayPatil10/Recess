@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Advisors 💼 AILeela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/arcade.css">
+  <style>
+    .advisors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1px;
+      background: var(--dim);
+    }
+    .advisor-panel {
+      background: var(--bg2);
+      display: flex;
+      flex-direction: column;
+      min-height: 220px;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .advisor-panel.vote-mode { cursor: crosshair; }
+    .advisor-panel.vote-mode:hover { background: var(--bg3); }
+    .advisor-panel.winner { background: rgba(240,224,64,0.04); border: 1px solid var(--accent); }
+
+    .vote-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: var(--accent);
+      opacity: 0; transition: opacity 0.15s; text-transform: uppercase;
+      background: rgba(240,224,64,0.08);
+    }
+    .advisor-panel.vote-mode:hover .vote-overlay { opacity: 1; }
+
+    .panel-header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1rem 0.5rem;
+      border-bottom: 1px solid var(--dim);
+    }
+    .panel-emoji { font-size: 1.3rem; line-height: 1; }
+    .panel-name { font-family: var(--display); font-size: 0.85rem; letter-spacing: -0.01em; }
+    .panel-winner-badge {
+      margin-left: auto;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+      color: var(--accent); background: rgba(240,224,64,0.1);
+      border: 1px solid rgba(240,224,64,0.3);
+      padding: 2px 6px; display: none;
+    }
+    .advisor-panel.winner .panel-winner-badge { display: inline-block; }
+
+    .panel-body {
+      padding: 0.75rem 1rem; font-size: 13px; line-height: 1.75; flex: 1; color: var(--text);
+    }
+    .panel-body .thinking {
+      color: var(--dim); font-size: 11px; letter-spacing: 0.06em;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    textarea.arcade-input { resize: vertical; min-height: 90px; line-height: 1.7; }
+    .selector-note { font-size: 11px; color: var(--muted); margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div id="no-key-overlay" class="no-key-overlay">
+  <div class="no-key-card">
+    <h2>FREE ROUND USED</h2>
+    <p>You've used your free round. Enter an API key to keep playing — Gemini is completely free!</p>
+    <a class="arcade-btn-primary" href="../index.html#key-entry">← GET A KEY</a>
+    <a class="arcade-btn-ghost" href="../index.html" style="margin-top:0.5rem">← BACK TO LOBBY</a>
+  </div>
+</div>
+
+<div class="game-page-wrap">
+
+  <div id="setup" class="game-setup-card">
+    <div class="game-title">💼 THE ADVISORS</div>
+    <div class="game-tagline">Ask a life or business question. Four very different advisors respond at once.</div>
+
+    <div class="setup-section">
+      <div class="setup-label">YOUR QUESTION</div>
+      <textarea
+        id="question-input"
+        class="arcade-input"
+        placeholder="A decision, dilemma, or question about life, work, money, or strategy.&#10;The more specific, the better."
+        oninput="validateStart()"
+      ></textarea>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label" style="margin-bottom:0.5rem">MODEL</div>
+      <div id="model-selector"></div>
+      <div id="model-note" class="selector-note"></div>
+    </div>
+
+    <button class="arcade-btn-primary" id="start-btn" onclick="startSession()" disabled>
+      ▶ ASK THE ADVISORS
+    </button>
+  </div>
+
+  <div id="game" style="display:none">
+    <div id="advisors-grid" class="advisors-grid"></div>
+
+    <div id="vote-section" class="vote-section" style="margin-top:2rem;display:none">
+      <div class="vote-title">WHOSE ADVICE WOULD YOU ACTUALLY TAKE?</div>
+      <div id="vote-grid" class="vote-grid"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:2rem">
+      <button class="arcade-btn-ghost" onclick="resetGame()">← NEW QUESTION</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../js/key-manager.js"></script>
+<script src="../js/ai-client.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const ADVISORS = [
+  {
+    id: 'buffett',
+    name: 'Warren Buffett',
+    emoji: '📈',
+    color: 'var(--green)',
+    systemPrompt: `You are Warren Buffett. You give advice in your folksy, patient, long-term-thinking style. Use simple language. Reference compounding, time horizons, or intrinsic value where relevant. You often use homespun analogies. Keep to 5 sentences.${NO_META}`,
+  },
+  {
+    id: 'naval',
+    name: 'Naval Ravikant',
+    emoji: '⚡',
+    color: 'var(--cyan)',
+    systemPrompt: `You are Naval Ravikant. Give advice about leverage, specific knowledge, wealth creation, and personal freedom. Be direct and aphoristic. Think in first principles. Reference the distinction between renting time versus owning equity where relevant. Keep to 5 sentences.${NO_META}`,
+  },
+  {
+    id: 'dad',
+    name: 'Your Dad',
+    emoji: '👨',
+    color: 'var(--accent)',
+    systemPrompt: `You are someone's well-meaning dad giving practical advice. You're slightly out of touch with modern trends but genuinely caring. You give concrete, common-sense suggestions. You might reference what worked for you "back in the day". You're occasionally a bit wrong but your heart is in the right place. Keep to 5 sentences.${NO_META}`,
+  },
+  {
+    id: 'fortune',
+    name: 'Fortune Cookie',
+    emoji: '🥠',
+    color: 'var(--pink)',
+    systemPrompt: `You are a fortune cookie oracle. Your wisdom is cryptic, short, and oddly applicable. Speak in metaphors, paradoxes, or zen koans. Never give direct advice — only oblique insights that make the reader do the work. Respond in exactly 2 sentences.${NO_META}`,
+  },
+];
+
+let _guard, _selector, _provider = null, _apiKey = null, _doneCount = 0;
+
+window.addEventListener('DOMContentLoaded', () => {
+  Nav.inject('game');
+  _guard = KeyManager.guardPage();
+  if (_guard === 'wall') return;
+  document.getElementById('no-key-overlay').style.display = 'none';
+  initSelector();
+});
+
+function initSelector() {
+  _selector = buildModelSelector(
+    document.getElementById('model-selector'),
+    { min: 1, max: 1, personas: ADVISORS, onChange: updateNote }
+  );
+  updateNote();
+}
+
+function updateNote() {
+  const note = document.getElementById('model-note');
+  if (_selector) note.textContent = _selector.getNote();
+  validateStart();
+}
+
+function validateStart() {
+  const q = document.getElementById('question-input').value.trim();
+  document.getElementById('start-btn').disabled = q.length < 5;
+}
+
+function startSession() {
+  const question = document.getElementById('question-input').value.trim();
+  if (!question) return;
+
+  const available = KeyManager.getAvailableProviders();
+  if (available.length > 0) {
+    _provider = available[0];
+    _apiKey   = KeyManager.get(_provider);
+  } else {
+    _provider = 'free';
+    _apiKey   = null;
+    if (_guard !== 'free') return;
+  }
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game').style.display  = 'block';
+  document.getElementById('vote-section').style.display = 'none';
+
+  buildPanels();
+  runAdvisors(question);
+}
+
+function buildPanels() {
+  document.getElementById('advisors-grid').innerHTML = ADVISORS.map(a => `
+    <div class="advisor-panel" id="panel-${a.id}" style="border-top:2px solid ${a.color}">
+      <div class="panel-header">
+        <span class="panel-emoji">${a.emoji}</span>
+        <span class="panel-name" style="color:${a.color}">${a.name}</span>
+        <span class="panel-winner-badge">★ CHOSEN</span>
+      </div>
+      <div class="panel-body panel-content streaming" id="body-${a.id}"><span class="thinking">thinking...</span></div>
+      <div class="vote-overlay">▶ I'D TAKE THIS</div>
+    </div>
+  `).join('');
+}
+
+function runAdvisors(question) {
+  _doneCount = 0;
+  const buffers = {};
+  ADVISORS.forEach(a => { buffers[a.id] = ''; });
+
+  const callbacks = ADVISORS.map(a => ({
+    onChunk(text) {
+      buffers[a.id] += text;
+      const el = document.getElementById(`body-${a.id}`);
+      if (el) {
+        const preview = (buffers[a.id].replace(/#{1,4}\s+[^\n]*/g,'').replace(/\n+/g,' ').trim()).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        el.innerHTML = `<span class="sentence">${preview}&#9611;</span>`;
+        el.scrollTop = el.scrollHeight;
+      }
+    },
+    onDone(fullText) {
+      const el = document.getElementById(`body-${a.id}`);
+      if (el) {
+        el.innerHTML = renderResponse(fullText || buffers[a.id]);
+        el.classList.remove('streaming');
+        el.classList.add('done');
+      }
+      _doneCount++;
+      if (_doneCount === ADVISORS.length) onAllDone();
+    },
+    onError(err) {
+      const el = document.getElementById(`body-${a.id}`);
+      if (el) {
+        el.classList.remove('streaming');
+        el.innerHTML = `<p style="color:var(--pink);font-size:11px">Error: ${escHtml(String(err))}</p>`;
+      }
+      _doneCount++;
+      if (_doneCount === ADVISORS.length) onAllDone();
+    },
+  }));
+
+  callAllPersonas(ADVISORS, question, _apiKey, _provider, callbacks);
+}
+
+function onAllDone() {
+  if (_guard === 'free') KeyManager.markFreeUsed();
+
+  const voteSection = document.getElementById('vote-section');
+  voteSection.style.display = 'block';
+
+  document.getElementById('vote-grid').innerHTML = ADVISORS.map(a => `
+    <button class="arcade-btn-ghost" onclick="vote('${a.id}')"
+      style="border-color:${a.color};color:${a.color}">
+      ${a.emoji} ${a.name}
+    </button>
+  `).join('');
+
+  ADVISORS.forEach(a => {
+    const panel = document.getElementById(`panel-${a.id}`);
+    if (panel) {
+      panel.classList.add('vote-mode');
+      panel.onclick = () => vote(a.id);
+    }
+  });
+}
+
+function vote(advisorId) {
+  ADVISORS.forEach(a => {
+    const panel = document.getElementById(`panel-${a.id}`);
+    if (panel) {
+      panel.classList.remove('vote-mode', 'winner');
+      panel.onclick = null;
+      if (a.id === advisorId) panel.classList.add('winner');
+    }
+  });
+  document.getElementById('vote-section').style.display = 'none';
+}
+
+function resetGame() {
+  document.getElementById('setup').style.display = 'block';
+  document.getElementById('game').style.display  = 'none';
+  document.getElementById('question-input').value = '';
+  validateStart();
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
