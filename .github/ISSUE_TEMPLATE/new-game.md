@@ -26,8 +26,7 @@ Complete this sentence:
 and I can't believe it"
 
 ## Works with
-- [ ] Free mode (no key needed)
-- [ ] 1 API key
+- [ ] 1 API key (required)
 - [ ] Multiple keys (different providers)
 
 ## Willing to build it?

@@ -8,7 +8,7 @@ Before you start coding, answer these three questions:
 
 1. **What does the user vote on or decide?** (There must be a clear winner/choice moment)
 2. **What would someone tweet after playing?** (The output should be shareable)  
-3. **Does it work with just 1 API key?** (Persona mode is essential)
+3. **Does it work with just 1 API key?** (This is required - no free mode)
 
 If you can't answer all three clearly, rethink the concept.
 
@@ -33,10 +33,10 @@ No npm, no build step, no configuration. Just open `index.html` in a browser.
 3. **Fill in the blanks**: Look for all `// CHANGE THIS` comments
 4. **Add to homepage**: Add your game card to the `GAMES` array in `index.html`
 5. **Test thoroughly**:
-   - ✅ Works in free mode (no API key)
    - ✅ Works with 1 API key (persona mode)
    - ✅ Works with multiple keys
    - ✅ Share card displays correctly
+   - ✅ Requires API key (no free mode)
 6. **Open a PR** using our pull request template
 
 ### Game Card Format
@@ -60,7 +60,7 @@ Add your game to the `GAMES` array in `index.html`:
 ## 🎮 Game Development Rules
 
 ### Must-Haves
-- ✅ **Free mode support**: Uses Pollinations.ai anonymous API
+- ✅ **API key required**: Must have at least 1 API key to play
 - ✅ **1 API key support**: Persona mode or model family comparisons
 - ✅ **Response rendering**: Use `renderResponse()` from `ai-client.js`
 - ✅ **Share functionality**: Implement `ShareCard.show()` on game end
@@ -160,7 +160,7 @@ ShareCard.show({ game, headline, body, tweetText })
 ## 🧪 Testing Your Game
 
 ### Test Checklist
-- [ ] **Free mode**: Works without any API key
+- [ ] **API key required**: Properly blocks access without API key
 - [ ] **Single key**: Works with just OpenAI key (persona mode)
 - [ ] **Multi-key**: Works with multiple provider keys
 - [ ] **Mobile**: Responsive on phone screens
@@ -181,7 +181,7 @@ When you submit your pull request, make sure:
 
 - [ ] Copied from `GAME_TEMPLATE.html`
 - [ ] All `// CHANGE THIS` sections updated
-- [ ] Works in free mode (tested with no API key)
+- [ ] Requires API key (blocks access without key)
 - [ ] Works with 1 API key (tested with real key)
 - [ ] Uses `renderResponse()` for all model output
 - [ ] Share card implemented and tested

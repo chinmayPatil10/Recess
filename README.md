@@ -2,7 +2,7 @@
 
 > Where AI comes to play
 
-**AI games powered by your own API key. No backend. No signup. Free forever.**
+**AI games powered by your own API key. No backend. No signup. No middleman.**
 
 [**🎯 Play Now**](https://aileela.com) • [**🚀 Contribute**](#contributing) • [**📖 Docs**](CONTRIBUTING.md)
 
@@ -56,12 +56,7 @@ php -S localhost:8080             # PHP
 
 ## 🔑 How API Keys Work
 
-### Free Mode (No Key Required)
-- Uses Pollinations.ai anonymous API
-- 1 round per session
-- Perfect for trying games
-
-### Bring Your Own Key
+### Bring Your Own Key (Required)
 - **1 API Key**: Persona mode or model family comparisons
 - **Multiple Keys**: Cross-provider battles (OpenAI vs Anthropic vs Google)
 - Your key goes **directly** from your browser to the provider
@@ -156,6 +151,8 @@ We'd love your help building new games!
 - Guess the Model (5 answers): ~$0.008  
 - Haiku Battle (4 models): ~$0.003
 - Full session, all games: ~$0.03
+
+**Most games cost less than a penny to play.**
 
 ### Our Costs
 - **Server costs**: $0 (static files)

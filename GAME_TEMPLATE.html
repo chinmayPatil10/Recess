@@ -201,9 +201,8 @@ let gameState = {
 window.addEventListener('load', () => {
   Nav.inject();
   
-  // Check if user has access
-  const guard = KeyManager.guardPage();
-  if (guard === 'wall') {
+  // Require API key - no free mode
+  if (!KeyManager.hasAnyKey()) {
     document.getElementById('no-key-overlay').style.display = 'grid';
     return;
   }

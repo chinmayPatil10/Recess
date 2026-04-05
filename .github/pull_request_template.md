@@ -4,7 +4,7 @@ One line description:
 
 ## Checklist
 - [ ] Copied from GAME_TEMPLATE.html
-- [ ] Works in free mode (tested with no API key)
+- [ ] Requires API key (blocks access without key)
 - [ ] Works with 1 API key
 - [ ] Uses renderResponse() for all model output
 - [ ] Share card implemented

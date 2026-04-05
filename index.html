@@ -628,23 +628,14 @@
     </div> -->
 
     <div class="key-box">
-      <!-- TABS -->
-      <div style="display:flex;border-bottom:1px solid var(--dim);margin-bottom:1rem">
-        <button class="key-tab active" id="tab-free" onclick="switchKeyTab('free')">
-          ⚡ TRY FREE
-        </button>
-        <button class="key-tab" id="tab-mykey" onclick="switchKeyTab('mykey')">
-          🔑 MY KEY
-        </button>
+      <!-- API KEY ENTRY -->
+      <div style="margin-bottom:1rem">
+        <h3 style="font-family:var(--display);font-size:1.2rem;margin:0 0 0.5rem;color:var(--accent)">🔑 Enter Your API Key</h3>
+        <p style="font-size:0.9rem;color:var(--muted);margin:0 0 1rem;line-height:1.4">Bring your own API key to start playing. Your key goes directly to the provider.</p>
       </div>
 
-      <!-- TRY FREE TAB — content rendered by renderFreeTab() -->
-      <div id="tab-free-content"></div>
-
-      <!-- MY KEY TAB — key vault table -->
-      <div id="tab-mykey-content" style="display:none">
-        <div id="key-vault"><!-- rendered by renderKeyVault() --></div>
-      </div>
+      <!-- KEY VAULT TABLE -->
+      <div id="key-vault"><!-- rendered by renderKeyVault() --></div>
 
       <!-- ACCORDIONS -->
       <div class="accordion">
@@ -823,7 +814,7 @@
         <div class="why-card-icon">✓</div>
         <div>
           <div class="why-card-title">Direct to the provider</div>
-          <div class="why-card-sub">fetch() straight to api.openai.com, api.anthropic.com, etc.</div>
+          <div class="why-card-sub">Your API key goes straight to OpenAI, Anthropic, Google. No middleman.</div>
         </div>
       </div>
       <div class="why-card">
@@ -930,7 +921,7 @@
       class="arcade-btn-primary"
       href="#key-entry"
       onclick="event.preventDefault();document.getElementById('key-entry').scrollIntoView({behavior:'smooth'})"
-    >▶ GET STARTED FREE</a>
+    >▶ GET STARTED</a>
     <a
       class="arcade-btn-ghost"
       href="https://github.com/chinmayPatil10/plugai"
