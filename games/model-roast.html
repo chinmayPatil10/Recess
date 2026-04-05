@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Model Roast ⚔ AILeela</title>
+  <title>Model Roast ⚔ Recess</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/arcade.css">
@@ -355,10 +355,10 @@ function castVote(winner) {
   const nB = state.modelB.display;
   const t = state.topic;
   const data = winner === 'a'
-    ? { headline:`${nA} wins 🏆`, body:`"${t}" — ${nA} defeated ${nB}`, tweet:`${nA} just destroyed ${nB} debating "${t}" 🔥 AILeela` }
+    ? { headline:`${nA} wins 🏆`, body:`"${t}" — ${nA} defeated ${nB}`, tweet:`${nA} just destroyed ${nB} debating "${t}" 🔥 Recess` }
     : winner === 'b'
-    ? { headline:`${nB} wins 🏆`, body:`"${t}" — ${nB} defeated ${nA}`, tweet:`${nB} just destroyed ${nA} debating "${t}" 🔥 AILeela` }
-    : { headline:`🤝 It's a tie`, body:`"${t}" — ${nA} vs ${nB} ended in a draw`, tweet:`${nA} vs ${nB} debating "${t}" — IT'S A TIE 🤝 AILeela` };
+    ? { headline:`${nB} wins 🏆`, body:`"${t}" — ${nB} defeated ${nA}`, tweet:`${nB} just destroyed ${nA} debating "${t}" 🔥 Recess` }
+    : { headline:`🤝 It's a tie`, body:`"${t}" — ${nA} vs ${nB} ended in a draw`, tweet:`${nA} vs ${nB} debating "${t}" — IT'S A TIE 🤝 Recess` };
   document.getElementById('vote-section').style.display = 'none';
   ShareCard.show({ game:'Model Roast', headline:data.headline, body:data.body, tweetText:data.tweet });
 }

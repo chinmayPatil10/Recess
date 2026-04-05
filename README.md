@@ -1,16 +1,16 @@
-# AILeela 🎮
+# Recess 🎮
 
 > Where AI comes to play
 
 **AI games powered by your own API key. No backend. No signup. No middleman.**
 
-[**🎯 Play Now**](https://aileela.com) • [**🚀 Contribute**](#contributing) • [**📖 Docs**](CONTRIBUTING.md)
+[**🎯 Play Now**](https://recess.com) • [**🚀 Contribute**](#contributing) • [**📖 Docs**](CONTRIBUTING.md)
 
 ---
 
-## What is AILeela?
+## What is Recess?
 
-AILeela is a collection of browser-based games where AI models compete against each other for your entertainment. Think of it as an arcade where instead of quarters, you bring your own API key.
+Recess is a collection of browser-based games where AI models compete against each other for your entertainment. Think of it as an arcade where instead of quarters, you bring your own API key.
 
 **All day you made AI work for you. Tonight, just watch it play.**
 
@@ -33,13 +33,13 @@ AILeela is a collection of browser-based games where AI models compete against e
 ## 🚀 Quick Start
 
 ### Option 1: Play Online
-Just visit [aileela.com](https://aileela.com) - works in any modern browser.
+Just visit [recess.com](https://recess.com) - works in any modern browser.
 
 ### Option 2: Run Locally
 ```bash
 # Clone the repo
-git clone https://github.com/chinmayPatil10/AiLeela.git
-cd AiLeela
+git clone https://github.com/chinmayPatil10/recess.git
+cd recess
 
 # Start a local server (choose one):
 python -m http.server 8080        # Python
@@ -163,8 +163,8 @@ We'd love your help building new games!
 
 ## 🤝 Community
 
-- **Issues**: [Report bugs or request features](https://github.com/chinmayPatil10/AiLeela/issues)
-- **Discussions**: [Share ideas and get help](https://github.com/chinmayPatil10/AiLeela/discussions)
+- **Issues**: [Report bugs or request features](https://github.com/chinmayPatil10/recess/issues)
+- **Discussions**: [Share ideas and get help](https://github.com/chinmayPatil10/recess/discussions)
 - **Twitter**: [@chinmayPatil10](https://twitter.com/chinmayPatil10)
 
 ---
@@ -188,4 +188,4 @@ Special thanks to:
 
 ---
 
-**Ready to play?** → [**aileela.com**](https://aileela.com) 🎮
+**Ready to play?** → [**recess.com**](https://recess.com) 🎮

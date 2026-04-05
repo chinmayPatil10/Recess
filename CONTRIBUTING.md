@@ -1,6 +1,6 @@
-# Contributing to AILeela 🎮
+# Contributing to Recess 🎮
 
-Thanks for your interest in contributing! AILeela is designed to be contributor-friendly - you can build a new game in under an hour.
+Thanks for your interest in contributing! Recess is designed to be contributor-friendly - you can build a new game in under an hour.
 
 ## 🎯 The Bar for a Good Game
 
@@ -16,8 +16,8 @@ If you can't answer all three clearly, rethink the concept.
 
 ### Run Locally
 ```bash
-git clone https://github.com/chinmayPatil10/AiLeela.git
-cd AiLeela
+git clone https://github.com/chinmayPatil10/recess.git
+cd recess
 python -m http.server 8080
 # Open http://localhost:8080
 ```
@@ -199,14 +199,14 @@ When you submit your pull request, make sure:
 
 ## 🎉 After Your Game is Merged
 
-- Your game will be live on [aileela.com](https://aileela.com)
+- Your game will be live on [recess.com](https://recess.com)
 - You'll be credited in the README
 - Share it on social media! Tag us [@chinmayPatil10](https://twitter.com/chinmayPatil10)
 
 ## ❓ Need Help?
 
-- **Bug reports**: [Open an issue](https://github.com/chinmayPatil10/AiLeela/issues)
-- **Questions**: [Start a discussion](https://github.com/chinmayPatil10/AiLeela/discussions)
+- **Bug reports**: [Open an issue](https://github.com/chinmayPatil10/recess/issues)
+- **Questions**: [Start a discussion](https://github.com/chinmayPatil10/recess/discussions)
 - **Quick help**: Comment on your PR and we'll respond quickly
 
 ---

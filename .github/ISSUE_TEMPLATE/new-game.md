@@ -22,7 +22,7 @@ What does the user decide or vote on at the end?
 
 ## Share moment
 Complete this sentence:
-"I just played AILeela and [model/persona] ______ 
+"I just played Recess and [model/persona] ______ 
 and I can't believe it"
 
 ## Works with
