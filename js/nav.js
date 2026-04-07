@@ -78,8 +78,7 @@ const Nav = {
     root.innerHTML = `
       <nav class="arcade-nav">
         <a class="nav-logo" href="${isLobby ? '#' : '../index.html'}">
-          <span class="nav-logo-plug">plug</span><span class="nav-logo-ai">ai</span>
-          <span class="nav-logo-tag">ARCADE</span>
+          <span class="nav-logo-plug">Recess</span>
         </a>
         <div class="nav-spacer"></div>
         ${backLink}
